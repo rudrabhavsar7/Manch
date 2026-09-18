@@ -14,25 +14,6 @@ create table public.users (
   created_at timestamptz not null default now()
 );
 
-alter table public.users enable row level security;
-
-create policy "Users can view own profile"
-  on public.users for select
-  using (auth.uid() = id);
-
-create policy "Users can update own profile"
-  on public.users for update
-  using (auth.uid() = id);
-
-create policy "Users can insert own profile"
-  on public.users for insert
-  with check (auth.uid() = id);
-
--- Allow users to see other users' display names (for member lists)
-create policy "Users can view other users display info"
-  on public.users for select
-  using (true);
-
 -- ==================
 -- SONGS
 -- ==================
@@ -49,25 +30,6 @@ create table public.songs (
   updated_at timestamptz not null default now()
 );
 
-alter table public.songs enable row level security;
-
-create policy "Users can CRUD own songs"
-  on public.songs for all
-  using (auth.uid() = owner_id);
-
--- Gig members can read songs in their gig's setlist
-create policy "Gig members can read setlist songs"
-  on public.songs for select
-  using (
-    id in (
-      select ss.song_id from public.setlist_songs ss
-      join public.gigs g on g.setlist_id = ss.setlist_id
-      join public.gig_members gm on gm.gig_id = g.id
-      where gm.user_id = auth.uid()
-        and g.status in ('live', 'ended')
-    )
-  );
-
 -- ==================
 -- SETLISTS
 -- ==================
@@ -80,31 +42,6 @@ create table public.setlists (
   updated_at timestamptz not null default now()
 );
 
-alter table public.setlists enable row level security;
-
-create policy "Users can CRUD own setlists"
-  on public.setlists for all
-  using (auth.uid() = owner_id);
-
-create policy "Shared users can view private setlists"
-  on public.setlists for select
-  using (
-    id in (
-      select setlist_id from public.setlist_shares
-      where user_id = auth.uid()
-    )
-  );
-
-create policy "Gig members can view gig setlists"
-  on public.setlists for select
-  using (
-    id in (
-      select g.setlist_id from public.gigs g
-      join public.gig_members gm on gm.gig_id = g.id
-      where gm.user_id = auth.uid()
-    )
-  );
-
 -- ==================
 -- SETLIST_SONGS (join table)
 -- ==================
@@ -114,26 +51,6 @@ create table public.setlist_songs (
   song_id uuid not null references public.songs(id) on delete cascade,
   position integer not null default 0
 );
-
-alter table public.setlist_songs enable row level security;
-
-create policy "Setlist owner can CRUD setlist songs"
-  on public.setlist_songs for all
-  using (
-    setlist_id in (
-      select id from public.setlists where owner_id = auth.uid()
-    )
-  );
-
-create policy "Gig members can view setlist songs"
-  on public.setlist_songs for select
-  using (
-    setlist_id in (
-      select g.setlist_id from public.gigs g
-      join public.gig_members gm on gm.gig_id = g.id
-      where gm.user_id = auth.uid()
-    )
-  );
 
 -- ==================
 -- GIGS
@@ -149,35 +66,6 @@ create table public.gigs (
   ended_at timestamptz
 );
 
-alter table public.gigs enable row level security;
-
-create policy "Admin can CRUD own gigs"
-  on public.gigs for all
-  using (auth.uid() = admin_id);
-
-create policy "Co-admins can update gigs"
-  on public.gigs for update
-  using (
-    id in (
-      select gig_id from public.gig_members
-      where user_id = auth.uid() and role = 'co-admin'
-    )
-  );
-
-create policy "Members can view their gigs"
-  on public.gigs for select
-  using (
-    id in (
-      select gig_id from public.gig_members
-      where user_id = auth.uid()
-    )
-  );
-
--- Allow anyone to look up active gigs by PIN (for joining)
-create policy "Anyone can find active gigs by PIN"
-  on public.gigs for select
-  using (status = 'live');
-
 -- ==================
 -- GIG_MEMBERS
 -- ==================
@@ -189,38 +77,6 @@ create table public.gig_members (
   joined_at timestamptz not null default now(),
   unique (gig_id, user_id)
 );
-
-alter table public.gig_members enable row level security;
-
-create policy "Admin can manage gig members"
-  on public.gig_members for all
-  using (
-    gig_id in (
-      select id from public.gigs where admin_id = auth.uid()
-    )
-  );
-
-create policy "Co-admins can view gig members"
-  on public.gig_members for select
-  using (
-    gig_id in (
-      select gig_id from public.gig_members
-      where user_id = auth.uid() and role = 'co-admin'
-    )
-  );
-
-create policy "Users can insert themselves as members"
-  on public.gig_members for insert
-  with check (auth.uid() = user_id);
-
-create policy "Members can view fellow members"
-  on public.gig_members for select
-  using (
-    gig_id in (
-      select gig_id from public.gig_members
-      where user_id = auth.uid()
-    )
-  );
 
 -- ==================
 -- ANNOTATIONS
@@ -237,13 +93,6 @@ create table public.annotations (
   updated_at timestamptz not null default now()
 );
 
-alter table public.annotations enable row level security;
-
--- Annotations are strictly private
-create policy "Users can CRUD own annotations only"
-  on public.annotations for all
-  using (auth.uid() = user_id);
-
 -- ==================
 -- SETLIST_SHARES
 -- ==================
@@ -257,6 +106,200 @@ create table public.setlist_shares (
   unique (setlist_id, user_id)
 );
 
+-- ==================
+-- SECURITY DEFINER HELPER FUNCTIONS
+-- (Prevents RLS infinite recursion on gig_members)
+-- ==================
+create or replace function public.is_gig_member(check_gig_id uuid, check_user_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.gig_members
+    where gig_id = check_gig_id and user_id = check_user_id
+  );
+$$;
+
+create or replace function public.is_gig_co_admin(check_gig_id uuid, check_user_id uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.gig_members
+    where gig_id = check_gig_id and user_id = check_user_id and role = 'co-admin'
+  );
+$$;
+
+-- ==================
+-- ROW LEVEL SECURITY (RLS)
+-- ==================
+
+-- 1. USERS RLS
+alter table public.users enable row level security;
+
+create policy "Users can view own profile"
+  on public.users for select
+  using (auth.uid() = id);
+
+create policy "Users can update own profile"
+  on public.users for update
+  using (auth.uid() = id);
+
+create policy "Users can insert own profile"
+  on public.users for insert
+  with check (auth.uid() = id);
+
+create policy "Authenticated users can view display info"
+  on public.users for select
+  to authenticated
+  using (true);
+
+-- 2. SONGS RLS
+alter table public.songs enable row level security;
+
+create policy "Users can CRUD own songs"
+  on public.songs for all
+  using (auth.uid() = owner_id);
+
+create policy "Gig members can read setlist songs"
+  on public.songs for select
+  using (
+    id in (
+      select ss.song_id from public.setlist_songs ss
+      join public.gigs g on g.setlist_id = ss.setlist_id
+      where public.is_gig_member(g.id, auth.uid())
+        and g.status in ('live', 'ended')
+    )
+  );
+
+create policy "Users can read public or shared setlist songs"
+  on public.songs for select
+  using (
+    id in (
+      select ss.song_id from public.setlist_songs ss
+      join public.setlists s on s.id = ss.setlist_id
+      where s.privacy = 'public'
+      union
+      select ss.song_id from public.setlist_songs ss
+      join public.setlist_shares sh on sh.setlist_id = ss.setlist_id
+      where sh.user_id = auth.uid()
+    )
+  );
+
+-- 3. SETLISTS RLS
+alter table public.setlists enable row level security;
+
+create policy "Users can CRUD own setlists"
+  on public.setlists for all
+  using (auth.uid() = owner_id);
+
+create policy "Anyone can view public setlists"
+  on public.setlists for select
+  using (privacy = 'public');
+
+create policy "Shared users can view private setlists"
+  on public.setlists for select
+  using (
+    id in (
+      select setlist_id from public.setlist_shares
+      where user_id = auth.uid()
+    )
+  );
+
+create policy "Gig members can view gig setlists"
+  on public.setlists for select
+  using (
+    id in (
+      select g.setlist_id from public.gigs g
+      where public.is_gig_member(g.id, auth.uid())
+    )
+  );
+
+-- 4. SETLIST_SONGS RLS
+alter table public.setlist_songs enable row level security;
+
+create policy "Setlist owner can CRUD setlist songs"
+  on public.setlist_songs for all
+  using (
+    setlist_id in (
+      select id from public.setlists where owner_id = auth.uid()
+    )
+  );
+
+create policy "Gig members can view setlist songs"
+  on public.setlist_songs for select
+  using (
+    setlist_id in (
+      select g.setlist_id from public.gigs g
+      where public.is_gig_member(g.id, auth.uid())
+    )
+  );
+
+create policy "Users can view public or shared setlist songs"
+  on public.setlist_songs for select
+  using (
+    setlist_id in (
+      select id from public.setlists where privacy = 'public'
+      union
+      select setlist_id from public.setlist_shares where user_id = auth.uid()
+    )
+  );
+
+-- 5. GIGS RLS
+alter table public.gigs enable row level security;
+
+create policy "Admin can CRUD own gigs"
+  on public.gigs for all
+  using (auth.uid() = admin_id);
+
+create policy "Co-admins can update gigs"
+  on public.gigs for update
+  using (public.is_gig_co_admin(id, auth.uid()));
+
+create policy "Members can view their gigs"
+  on public.gigs for select
+  using (public.is_gig_member(id, auth.uid()));
+
+create policy "Anyone can find active gigs by PIN"
+  on public.gigs for select
+  using (status = 'live');
+
+-- 6. GIG_MEMBERS RLS
+alter table public.gig_members enable row level security;
+
+create policy "Admin can manage gig members"
+  on public.gig_members for all
+  using (
+    gig_id in (
+      select id from public.gigs where admin_id = auth.uid()
+    )
+  );
+
+create policy "Co-admins can view gig members"
+  on public.gig_members for select
+  using (public.is_gig_co_admin(gig_id, auth.uid()));
+
+create policy "Users can insert themselves as members"
+  on public.gig_members for insert
+  with check (auth.uid() = user_id and role = 'musician');
+
+create policy "Members can view fellow members"
+  on public.gig_members for select
+  using (public.is_gig_member(gig_id, auth.uid()));
+
+-- 7. ANNOTATIONS RLS
+alter table public.annotations enable row level security;
+
+-- Annotations are strictly private
+create policy "Users can CRUD own annotations only"
+  on public.annotations for all
+  using (auth.uid() = user_id);
+
+-- 8. SETLIST_SHARES RLS
 alter table public.setlist_shares enable row level security;
 
 create policy "Setlist owner can manage shares"
@@ -304,7 +347,7 @@ begin
   values (new.id, new.email);
   return new;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer set search_path = public;
 
 create trigger on_auth_user_created
   after insert on auth.users

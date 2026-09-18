@@ -206,5 +206,23 @@ describe('Supabase Client & Types', () => {
       const res = await updateSession(req);
       expect(res.status).toBe(200);
     });
+
+    it('allows /auth/callback as public route', async () => {
+      const req = new NextRequest('http://localhost:3000/auth/callback');
+      const res = await updateSession(req);
+      expect(res.status).toBe(200);
+    });
+
+    it('forwards cookies during redirect to login', async () => {
+      const req = new NextRequest('http://localhost:3000/gigs', {
+        headers: {
+          cookie: 'sb-test-auth-token=expired-token',
+        },
+      });
+      const res = await updateSession(req);
+      expect(res.status).toBe(307);
+      expect(res.headers.get('location')).toBe('http://localhost:3000/auth/login');
+      expect(res.cookies).toBeDefined();
+    });
   });
 });

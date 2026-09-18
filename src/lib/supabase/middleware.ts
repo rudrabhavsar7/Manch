@@ -30,11 +30,15 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Redirect unauthenticated users to login (except public routes)
-  const publicRoutes = ['/', '/auth/login', '/auth/signup'];
+  const publicRoutes = ['/', '/auth/login', '/auth/signup', '/auth/callback'];
   if (!user && !publicRoutes.includes(request.nextUrl.pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie.name, cookie.value, cookie);
+    });
+    return redirectResponse;
   }
 
   return supabaseResponse;
