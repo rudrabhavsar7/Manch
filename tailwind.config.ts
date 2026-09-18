@@ -50,11 +50,21 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        // Manch design tokens (docs/design-language.md & globals.css)
         stage: "var(--bg-stage)",
         surface: "var(--bg-surface)",
         elevated: "var(--bg-elevated)",
+        text: {
+          primary: "var(--text-primary)",
+          secondary: "var(--text-secondary)",
+        },
+        textPrimary: "var(--text-primary)",
+        textSecondary: "var(--text-secondary)",
         chord: "var(--color-chord)",
+        stageAccent: "var(--color-accent)",
         active: "var(--color-active)",
+        stageDestructive: "var(--color-destructive)",
+        stageBorder: "var(--color-border)",
       },
       fontFamily: {
         mono: ["var(--font-mono)", "monospace"],
