@@ -119,7 +119,7 @@ describe('SongPicker', () => {
     await user.clear(searchInput);
     await user.type(searchInput, 'NonExistentSong');
 
-    expect(screen.getByText('No songs found')).toBeInTheDocument();
+    expect(await screen.findByText('No songs found')).toBeInTheDocument();
   });
 
   it('calls onSelect with chosen song and closes dialog', async () => {
