@@ -87,13 +87,13 @@ describe('Song Pages', () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-1' } },
     });
-    mockSelect.mockReturnValue({
+    const chain = {
       eq: mockEq,
-    });
-    mockEq.mockReturnValue({
       order: mockOrder,
       single: mockSingle,
-    });
+    };
+    mockSelect.mockReturnValue(chain);
+    mockEq.mockReturnValue(chain);
     mockOrder.mockResolvedValue({ data: sampleSongs });
     mockSingle.mockResolvedValue({ data: sampleSongs[0] });
   });
@@ -139,7 +139,7 @@ describe('Song Pages', () => {
       expect(mockRedirect).toHaveBeenCalledWith('/auth/login');
     });
 
-    it('calls notFound when song does not exist', async () => {
+    it('calls notFound when song does not exist or does not belong to user', async () => {
       mockSingle.mockResolvedValueOnce({ data: null });
       await expect(
         EditSongPage({ params: Promise.resolve({ id: 'non-existent' }) }),
@@ -147,10 +147,12 @@ describe('Song Pages', () => {
       expect(mockNotFound).toHaveBeenCalled();
     });
 
-    it('renders the song editor with song details', async () => {
+    it('renders the song editor with song details after verifying ownership', async () => {
       const page = await EditSongPage({ params: Promise.resolve({ id: 'song-1' }) });
       render(page);
 
+      expect(mockEq).toHaveBeenCalledWith('id', 'song-1');
+      expect(mockEq).toHaveBeenCalledWith('owner_id', 'user-1');
       expect(screen.getByRole('heading', { name: /edit song/i })).toBeInTheDocument();
       expect(screen.getByLabelText(/title/i)).toHaveValue('Time');
     });

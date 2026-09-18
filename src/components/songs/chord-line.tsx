@@ -29,25 +29,19 @@ export function ChordLine({ segments }: ChordLineProps) {
   }
 
   return (
-    <div className="font-mono leading-relaxed whitespace-pre">
-      {hasChords && (
-        <div className="text-chord font-semibold text-sm select-none">
-          {segments.map((seg, i) => (
-            <span
-              key={i}
-              className="inline-block"
-              style={{ minWidth: `${seg.lyrics.length}ch` }}
-            >
+    <div className="flex flex-wrap items-end leading-none">
+      {segments.map((seg, i) => (
+        <span key={i} className="inline-flex flex-col">
+          {hasChords && (
+            <span className="font-mono text-chord font-semibold text-[0.85em] leading-tight min-h-[1.2em] whitespace-pre select-none">
               {seg.chord ?? ''}
             </span>
-          ))}
-        </div>
-      )}
-      <div className="text-textPrimary">
-        {segments.map((seg, i) => (
-          <span key={i}>{seg.lyrics}</span>
-        ))}
-      </div>
+          )}
+          <span className="font-sans text-textPrimary leading-normal whitespace-pre">
+            {seg.lyrics}
+          </span>
+        </span>
+      ))}
     </div>
   );
 }

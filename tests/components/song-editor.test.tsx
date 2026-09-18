@@ -7,6 +7,8 @@ import type { Database } from '@/types/database';
 type Song = Database['public']['Tables']['songs']['Row'];
 
 const mockPush = vi.fn();
+const mockRefresh = vi.fn();
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -14,18 +16,20 @@ vi.mock('next/navigation', () => ({
     prefetch: vi.fn(),
     back: vi.fn(),
     forward: vi.fn(),
-    refresh: vi.fn(),
+    refresh: mockRefresh,
   }),
 }));
 
 const mockGetUser = vi.fn();
 const mockInsert = vi.fn();
 const mockUpdate = vi.fn();
+const mockDelete = vi.fn();
 const mockEq = vi.fn();
 
 const mockFrom = vi.fn((table: string) => ({
   insert: mockInsert,
   update: mockUpdate,
+  delete: mockDelete,
 }));
 
 vi.mock('@/hooks/use-supabase', () => ({
@@ -58,6 +62,7 @@ describe('SongEditor', () => {
     });
     mockInsert.mockResolvedValue({ error: null });
     mockUpdate.mockReturnValue({ eq: mockEq });
+    mockDelete.mockReturnValue({ eq: mockEq });
     mockEq.mockResolvedValue({ error: null });
   });
 
@@ -70,9 +75,10 @@ describe('SongEditor', () => {
     expect(screen.getByLabelText(/bpm/i)).toHaveValue(null);
     expect(screen.getByRole('button', { name: /save song/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /delete song/i })).not.toBeInTheDocument();
   });
 
-  it('pre-fills fields when an existing song is provided', () => {
+  it('pre-fills fields when an existing song is provided and shows Delete Song', () => {
     render(<SongEditor song={sampleSong} />);
 
     expect(screen.getByRole('heading', { name: /edit song/i })).toBeInTheDocument();
@@ -80,6 +86,7 @@ describe('SongEditor', () => {
     expect(screen.getByLabelText(/artist/i)).toHaveValue('Pink Floyd');
     expect(screen.getByLabelText(/bpm/i)).toHaveValue(127);
     expect(screen.getByLabelText(/lyrics/i)).toHaveValue(sampleSong.content);
+    expect(screen.getByRole('button', { name: /delete song/i })).toBeInTheDocument();
   });
 
   it('shows error when title is empty on save', async () => {
@@ -92,6 +99,7 @@ describe('SongEditor', () => {
     expect(await screen.findByText('Title is required')).toBeInTheDocument();
     expect(mockInsert).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
+    expect(mockRefresh).not.toHaveBeenCalled();
   });
 
   it('switches to preview tab and displays rendered chords and lyrics', async () => {
@@ -108,7 +116,7 @@ describe('SongEditor', () => {
     expect(within(previewPanel).getByText(/anybody in there/i)).toBeInTheDocument();
   });
 
-  it('inserts new song and redirects to /songs on successful save', async () => {
+  it('inserts new song, calls router.refresh(), and redirects to /songs on save', async () => {
     const user = userEvent.setup();
     render(<SongEditor />);
 
@@ -132,6 +140,7 @@ describe('SongEditor', () => {
           owner_id: 'user-1',
         }),
       );
+      expect(mockRefresh).toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith('/songs');
     });
   });
@@ -156,6 +165,37 @@ describe('SongEditor', () => {
         }),
       );
       expect(mockEq).toHaveBeenCalledWith('id', 'song-123');
+      expect(mockRefresh).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith('/songs');
+    });
+  });
+
+  it('does not delete song if confirmation is cancelled', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(false);
+
+    render(<SongEditor song={sampleSong} />);
+
+    const deleteButton = screen.getByRole('button', { name: /delete song/i });
+    await user.click(deleteButton);
+
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('deletes song on confirmation and redirects to /songs', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
+
+    render(<SongEditor song={sampleSong} />);
+
+    const deleteButton = screen.getByRole('button', { name: /delete song/i });
+    await user.click(deleteButton);
+
+    await waitFor(() => {
+      expect(mockDelete).toHaveBeenCalled();
+      expect(mockEq).toHaveBeenCalledWith('id', 'song-123');
+      expect(mockRefresh).toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith('/songs');
     });
   });

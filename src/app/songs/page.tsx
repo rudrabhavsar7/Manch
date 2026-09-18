@@ -29,11 +29,11 @@ export default async function SongsPage() {
           <h1 className="text-3xl font-bold tracking-tight text-textPrimary">Song Library</h1>
           <p className="text-sm text-textSecondary mt-1">Manage your repertoire and chord charts</p>
         </div>
-        <Link href="/songs/new">
-          <Button className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium">
+        <Button asChild className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium">
+          <Link href="/songs/new">
             <Plus className="mr-2 h-4 w-4" /> New Song
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
 
       {songs && songs.length > 0 ? (
@@ -46,11 +46,11 @@ export default async function SongsPage() {
         <div className="text-center py-16 border border-dashed border-stageBorder rounded-lg bg-surface/50">
           <p className="text-textSecondary text-base">No songs yet. Create your first song!</p>
           <div className="mt-4">
-            <Link href="/songs/new">
-              <Button variant="outline" className="border-stageBorder text-textPrimary hover:bg-elevated">
+            <Button asChild variant="outline" className="border-stageBorder text-textPrimary hover:bg-elevated">
+              <Link href="/songs/new">
                 <Plus className="mr-2 h-4 w-4" /> New Song
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
       )}

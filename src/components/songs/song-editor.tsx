@@ -22,8 +22,8 @@ import type { Database } from '@/types/database';
 type Song = Database['public']['Tables']['songs']['Row'];
 
 const KEYS = [
-  'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B',
-  'Cm', 'C#m', 'Dm', 'D#m', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'A#m', 'Bm',
+  'C', 'C#', 'Db', 'D', 'D#', 'Eb', 'E', 'F', 'F#', 'Gb', 'G', 'G#', 'Ab', 'A', 'A#', 'Bb', 'B',
+  'Cm', 'C#m', 'Dm', 'D#m', 'Ebm', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Abm', 'Am', 'A#m', 'Bbm', 'Bm',
 ];
 
 interface SongEditorProps {
@@ -37,6 +37,7 @@ export function SongEditor({ song }: SongEditorProps) {
   const [bpm, setBpm] = useState<string>(song?.bpm?.toString() ?? '');
   const [content, setContent] = useState(song?.content ?? '');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const supabase = useSupabase();
@@ -77,6 +78,7 @@ export function SongEditor({ song }: SongEditorProps) {
       if (err) {
         setError(err.message);
       } else {
+        router.refresh();
         router.push('/songs');
       }
     } else {
@@ -86,11 +88,39 @@ export function SongEditor({ song }: SongEditorProps) {
       if (err) {
         setError(err.message);
       } else {
+        router.refresh();
         router.push('/songs');
       }
     }
 
     setSaving(false);
+  }
+
+  async function handleDelete() {
+    if (!song) return;
+    if (
+      typeof window !== 'undefined' &&
+      window.confirm &&
+      !window.confirm('Are you sure you want to delete this song?')
+    ) {
+      return;
+    }
+
+    setDeleting(true);
+    setError(null);
+
+    const { error: err } = await supabase
+      .from('songs')
+      .delete()
+      .eq('id', song.id);
+
+    if (err) {
+      setError(err.message);
+      setDeleting(false);
+    } else {
+      router.refresh();
+      router.push('/songs');
+    }
   }
 
   return (
@@ -217,21 +247,34 @@ export function SongEditor({ song }: SongEditorProps) {
             </p>
           )}
 
-          <div className="flex gap-3 pt-2">
-            <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
-            >
-              {saving ? 'Saving...' : 'Save Song'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push('/songs')}
-              className="border-stageBorder text-textSecondary hover:bg-elevated hover:text-textPrimary"
-            >
-              Cancel
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <div className="flex gap-3">
+              <Button
+                onClick={handleSave}
+                disabled={saving || deleting}
+                className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
+              >
+                {saving ? 'Saving...' : 'Save Song'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push('/songs')}
+                disabled={saving || deleting}
+                className="border-stageBorder text-textSecondary hover:bg-elevated hover:text-textPrimary"
+              >
+                Cancel
+              </Button>
+            </div>
+            {song && (
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={saving || deleting}
+                className="bg-stageDestructive hover:bg-stageDestructive/90 text-white font-medium"
+              >
+                {deleting ? 'Deleting...' : 'Delete Song'}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

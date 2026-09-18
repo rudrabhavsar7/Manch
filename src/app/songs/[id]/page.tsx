@@ -23,6 +23,7 @@ export default async function EditSongPage({
     .from('songs')
     .select('*')
     .eq('id', id)
+    .eq('owner_id', user.id)
     .single();
 
   if (!song) {
