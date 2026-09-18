@@ -50,7 +50,15 @@ const config: Config = {
           "4": "hsl(var(--chart-4))",
           "5": "hsl(var(--chart-5))",
         },
+        stage: "var(--bg-stage)",
+        surface: "var(--bg-surface)",
+        elevated: "var(--bg-elevated)",
         chord: "var(--color-chord)",
+        active: "var(--color-active)",
+      },
+      fontFamily: {
+        mono: ["var(--font-mono)", "monospace"],
+        sans: ["var(--font-sans)", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

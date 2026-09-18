@@ -21,6 +21,7 @@ const eslintConfig = [
       ".agents/**",
       ".agent/**",
       "**/*.config.*",
+      "next-env.d.ts",
     ],
   },
 ];
