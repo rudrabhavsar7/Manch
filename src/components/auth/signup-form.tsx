@@ -52,7 +52,7 @@ export function SignupForm() {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Stage name or real name"
-              className="bg-elevated border-stageBorder focus-visible:ring-stageAccent"
+              className="bg-elevated border-stageBorder focus-visible:ring-2 focus-visible:ring-stageAccent shadow-none"
               required
             />
           </div>
@@ -63,7 +63,7 @@ export function SignupForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-elevated border-stageBorder focus-visible:ring-stageAccent"
+              className="bg-elevated border-stageBorder focus-visible:ring-2 focus-visible:ring-stageAccent shadow-none"
               required
             />
           </div>
@@ -75,7 +75,7 @@ export function SignupForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               minLength={6}
-              className="bg-elevated border-stageBorder focus-visible:ring-stageAccent"
+              className="bg-elevated border-stageBorder focus-visible:ring-2 focus-visible:ring-stageAccent shadow-none"
               required
             />
           </div>

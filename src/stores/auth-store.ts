@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>((set) => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
       if (data?.user) {
-        set({ user: data.user });
+        set({ user: data.user, loading: false });
       }
       return { error: null };
     },
@@ -35,14 +35,17 @@ export const useAuthStore = create<AuthState>((set) => {
       });
       if (error) return { error: error.message };
       if (data?.user) {
-        set({ user: data.user });
+        set({ user: data.user, loading: false });
       }
       return { error: null };
     },
 
     signOut: async () => {
-      await supabase.auth.signOut();
-      set({ user: null });
+      try {
+        await supabase.auth.signOut();
+      } finally {
+        set({ user: null, loading: false });
+      }
     },
 
     initialize: () => {

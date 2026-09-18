@@ -64,6 +64,7 @@ describe('auth store (useAuthStore)', () => {
       });
       expect(result).toEqual({ error: null });
       expect(useAuthStore.getState().user).toEqual(mockUser);
+      expect(useAuthStore.getState().loading).toBe(false);
     });
 
     it('returns error message on failed sign in', async () => {
@@ -110,6 +111,7 @@ describe('auth store (useAuthStore)', () => {
       });
       expect(result).toEqual({ error: null });
       expect(useAuthStore.getState().user).toEqual(mockUser);
+      expect(useAuthStore.getState().loading).toBe(false);
     });
 
     it('returns error message on failed sign up', async () => {
@@ -139,6 +141,21 @@ describe('auth store (useAuthStore)', () => {
 
       expect(mockSignOut).toHaveBeenCalledTimes(1);
       expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().loading).toBe(false);
+    });
+
+    it('clears user and sets loading false even if supabase signOut throws', async () => {
+      mockSignOut.mockRejectedValueOnce(new Error('SignOut network error'));
+
+      const { useAuthStore } = await import('@/stores/auth-store');
+      useAuthStore.setState({
+        user: { id: 'u-1', email: 'test@example.com' } as User,
+        loading: true,
+      });
+
+      await expect(useAuthStore.getState().signOut()).rejects.toThrow('SignOut network error');
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().loading).toBe(false);
     });
   });
 

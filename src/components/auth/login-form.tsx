@@ -51,7 +51,7 @@ export function LoginForm() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-elevated border-stageBorder focus-visible:ring-stageAccent"
+              className="bg-elevated border-stageBorder focus-visible:ring-2 focus-visible:ring-stageAccent shadow-none"
               required
             />
           </div>
@@ -62,7 +62,7 @@ export function LoginForm() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="bg-elevated border-stageBorder focus-visible:ring-stageAccent"
+              className="bg-elevated border-stageBorder focus-visible:ring-2 focus-visible:ring-stageAccent shadow-none"
               required
             />
           </div>
