@@ -31,3 +31,8 @@ next-env.d.ts
 
 # superpowers
 .superpowers/
+
+# pwa service worker
+/public/sw*
+/public/swe-worker*
+

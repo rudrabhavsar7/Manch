@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils/cn';
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   themeColor: '#0C0C0E',
 };
 
