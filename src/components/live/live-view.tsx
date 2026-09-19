@@ -46,14 +46,16 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
     if (songIds.length > 0 && !activeSongId) {
       setActiveSongId(songIds[0]);
     }
+  }, [gig.id, myRole, songIds, gig.status, setGig, setSongIds, setStatus, setActiveSongId, activeSongId]);
 
+  useEffect(() => {
     // Connect to sync
     connect(gig.id, userId, isHost).catch(console.error);
 
     return () => {
       disconnect();
     };
-  }, [gig.id, myRole, songIds, gig.status, userId, isHost, connect, disconnect, setGig, setSongIds, setStatus, setActiveSongId, activeSongId]);
+  }, [gig.id, userId, isHost, connect, disconnect]);
 
   const activeSong = songs.find(s => s.id === activeSongId) || null;
 
@@ -119,7 +121,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
         {/* Members Panel */}
         {showMembers && (
           <div className="hidden lg:block shrink-0">
-            <MemberList gigId={gig.id} isAdmin={isAdmin} />
+            <MemberList gigId={gig.id} />
           </div>
         )}
       </main>
@@ -127,7 +129,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
       {/* Bottom Controls */}
       <footer className="shrink-0 border-t border-border bg-surface">
         {isAdmin ? (
-          <AdminControls songIds={songIds} />
+          <AdminControls songIds={songIds} onSend={send} />
         ) : (
           <MusicianControls />
         )}

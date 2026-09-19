@@ -14,10 +14,11 @@ interface SongDisplayProps {
   isAdmin: boolean;
 }
 
-export function SongDisplay({ song }: SongDisplayProps) {
+export function SongDisplay({ song, isAdmin }: SongDisplayProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fontSize = useUIStore((state) => state.fontSize);
   const transpose = useUIStore((state) => state.transposeMap[song?.id || ''] || 0);
+  const scrollLock = useUIStore((state) => state.scrollLock);
 
   if (!song) {
     return (
@@ -49,8 +50,12 @@ export function SongDisplay({ song }: SongDisplayProps) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-4 bg-elevated p-2 rounded-lg">
-          <TransposeControl songId={song.id} originalKey={song.key || 'C'} />
-          <div className="w-px h-6 bg-border mx-1" />
+          {!isAdmin && (
+            <>
+              <TransposeControl songId={song.id} originalKey={song.key || 'C'} />
+              <div className="w-px h-6 bg-border mx-1" />
+            </>
+          )}
           <FontSizeControl />
           <div className="w-px h-6 bg-border mx-1" />
           <AutoScroll containerRef={scrollRef} />
@@ -59,7 +64,7 @@ export function SongDisplay({ song }: SongDisplayProps) {
       
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-8 scroll-smooth"
+        className={`flex-1 p-8 ${scrollLock ? 'overflow-hidden' : 'overflow-y-auto'}`}
         data-testid="song-scroll-container"
       >
         <div className="max-w-4xl mx-auto pb-64">

@@ -15,7 +15,7 @@ export default async function GigPage({ params }: GigPageProps) {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/login');
+    redirect('/auth/login');
   }
 
   // Fetch gig

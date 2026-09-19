@@ -1,17 +1,18 @@
 import { ChevronLeft, ChevronRight, Square } from 'lucide-react';
 import { useGigStore } from '@/stores/gig-store';
-import { useSync } from '@/hooks/use-sync';
+
 import { Button } from '@/components/ui/button';
+import { SyncMessage } from '@/lib/sync/message-types';
 
 interface AdminControlsProps {
   songIds: string[];
+  onSend: (msg: SyncMessage) => void;
 }
 
-export function AdminControls({ songIds }: AdminControlsProps) {
+export function AdminControls({ songIds, onSend }: AdminControlsProps) {
   const activeSongId = useGigStore((state) => state.activeSongId);
   const setActiveSongId = useGigStore((state) => state.setActiveSongId);
   const setStatus = useGigStore((state) => state.setStatus);
-  const { send } = useSync();
 
   const currentIndex = activeSongId ? songIds.indexOf(activeSongId) : -1;
   const total = songIds.length;
@@ -23,7 +24,7 @@ export function AdminControls({ songIds }: AdminControlsProps) {
     if (hasPrev) {
       const prevId = songIds[currentIndex - 1];
       setActiveSongId(prevId);
-      send({ type: 'SONG_CHANGE', songId: prevId, timestamp: Date.now() });
+      onSend({ type: 'SONG_CHANGE', songId: prevId, timestamp: Date.now() });
     }
   };
 
@@ -31,13 +32,13 @@ export function AdminControls({ songIds }: AdminControlsProps) {
     if (hasNext) {
       const nextId = songIds[currentIndex + 1];
       setActiveSongId(nextId);
-      send({ type: 'SONG_CHANGE', songId: nextId, timestamp: Date.now() });
+      onSend({ type: 'SONG_CHANGE', songId: nextId, timestamp: Date.now() });
     }
   };
 
   const handleEndGig = () => {
     setStatus('ended');
-    send({ type: 'GIG_STATUS', status: 'ended', timestamp: Date.now() });
+    onSend({ type: 'GIG_STATUS', status: 'ended', timestamp: Date.now() });
   };
 
   return (

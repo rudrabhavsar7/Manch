@@ -43,6 +43,12 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: 'ui-storage',
+      partialize: (state) => ({
+        theme: state.theme,
+        fontSize: state.fontSize,
+        autoScrollSpeed: state.autoScrollSpeed,
+        transposeMap: state.transposeMap,
+      }),
     }
   )
 );

@@ -7,6 +7,15 @@ export function ConnectionBadge() {
 
   const isConnecting = connectionStatus === 'connecting' || connectionStatus === 'reconnecting';
 
+  if (connectionStatus === 'disconnected') {
+    return (
+      <Badge variant="destructive">
+        <WifiOff className="w-3 h-3 mr-1" />
+        Offline
+      </Badge>
+    );
+  }
+
   if (transport === 'webrtc') {
     return (
       <Badge variant="outline" className={`border-green-500 text-green-500 bg-green-500/10 ${isConnecting ? 'animate-pulse' : ''}`}>

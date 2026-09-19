@@ -45,9 +45,14 @@ describe('SongDisplay', () => {
     expect(screen.getByText('88 BPM')).toBeInTheDocument();
     expect(screen.getByText('Em')).toBeInTheDocument();
     
-    expect(screen.getByTestId('mock-transpose')).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-transpose')).not.toBeInTheDocument();
     expect(screen.getByTestId('mock-font-size')).toBeInTheDocument();
     expect(screen.getByTestId('mock-auto-scroll')).toBeInTheDocument();
     expect(screen.getByTestId('mock-song-renderer')).toHaveTextContent('Today is gonna be the day');
+  });
+
+  it('renders transpose control for musician', () => {
+    render(<SongDisplay song={mockSong} isAdmin={false} />);
+    expect(screen.getByTestId('mock-transpose')).toBeInTheDocument();
   });
 });
