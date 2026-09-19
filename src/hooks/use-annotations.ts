@@ -7,9 +7,7 @@ import { CacheManager } from '@/lib/offline/cache-manager';
 import { WriteQueue } from '@/lib/offline/write-queue';
 import { manchDB } from '@/lib/offline/db';
 import { useAuthStore } from '@/stores/auth-store';
-import type { Database } from '@/types/database';
-
-type Annotation = Database['public']['Tables']['annotations']['Row'];
+import type { Annotation } from '@/types/annotation';
 
 export function useAnnotations(songId: string) {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
@@ -19,16 +17,24 @@ export function useAnnotations(songId: string) {
   const user = useAuthStore((s) => s.user);
 
   const loadAnnotations = useCallback(async () => {
-    if (!user) return;
+    if (!user || !songId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
 
     if (isOnline) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('annotations')
         .select('*')
         .eq('user_id', user.id)
         .eq('song_id', songId);
-      if (data) {
+      
+      if (error || !data) {
+        console.error('Failed to load annotations from Supabase:', error);
+        const cached = await CacheManager.getAnnotationsForSong(user.id, songId);
+        setAnnotations(cached);
+      } else {
         setAnnotations(data);
         await CacheManager.cacheAnnotations(data);
       }
@@ -50,7 +56,7 @@ export function useAnnotations(songId: string) {
     color: string,
     lineNumber?: number,
   ) => {
-    if (!user) return;
+    if (!user || !songId) return;
 
     const newAnnotation = {
       id: crypto.randomUUID(),
@@ -89,26 +95,31 @@ export function useAnnotations(songId: string) {
   }, [user, songId, isOnline, supabase]);
 
   const updateAnnotation = useCallback(async (id: string, content: string, color: string) => {
+    const updated_at = new Date().toISOString();
+    
     setAnnotations((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, content, color, updated_at: new Date().toISOString() } : a)),
+      prev.map((a) => (a.id === id ? { ...a, content, color, updated_at } : a)),
     );
 
+    // Update in dexie first
+    await manchDB.annotations.update(id, { content, color, updated_at });
+
     if (isOnline) {
-      await supabase.from('annotations').update({ content, color }).eq('id', id);
+      await supabase.from('annotations').update({ content, color, updated_at }).eq('id', id);
     } else {
-      await WriteQueue.enqueue('annotations', 'update', { id, content, color });
+      await WriteQueue.enqueue('annotations', 'update', { id, content, color, updated_at });
     }
   }, [isOnline, supabase]);
 
   const deleteAnnotation = useCallback(async (id: string) => {
     setAnnotations((prev) => prev.filter((a) => a.id !== id));
+    await manchDB.annotations.delete(id);
 
     if (isOnline) {
       await supabase.from('annotations').delete().eq('id', id);
     } else {
       await WriteQueue.enqueue('annotations', 'delete', { id });
     }
-    await manchDB.annotations.delete(id);
   }, [isOnline, supabase]);
 
   const inlineAnnotations = annotations.filter((a) => a.type === 'inline');

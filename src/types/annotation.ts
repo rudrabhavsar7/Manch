@@ -1,3 +1,7 @@
+import type { Database } from './database';
+
+export type Annotation = Database['public']['Tables']['annotations']['Row'];
+
 export interface AnnotationColor {
   label: string;
   value: string;

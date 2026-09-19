@@ -22,6 +22,11 @@ export function AnnotationEditor({ initialContent = '', initialColor = '#fbbf24'
       <Textarea
         value={content}
         onChange={(e) => setContent(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            if (content.trim()) onSave(content, color);
+          }
+        }}
         placeholder="Add your note..."
         rows={2}
         className="text-sm border-0 focus-visible:ring-0 shadow-none resize-none p-0"

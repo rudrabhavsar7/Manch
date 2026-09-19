@@ -33,6 +33,7 @@ vi.mock('@/lib/offline/db', () => ({
   manchDB: {
     annotations: {
       put: vi.fn(),
+      update: vi.fn(),
       delete: vi.fn(),
     },
   },
@@ -151,5 +152,48 @@ describe('useAnnotations', () => {
     });
     expect(WriteQueue.enqueue).toHaveBeenCalledWith('annotations', 'insert', expect.any(Object));
     expect(manchDB.annotations.put).toHaveBeenCalled();
+  });
+
+  it('updates annotation online', async () => {
+    (useOffline as any).mockReturnValue({ isOnline: true });
+    const mockData = [{ id: 'u1', type: 'general', content: 'old', color: 'blue' }];
+    const secondEq = vi.fn().mockResolvedValue({ data: mockData });
+    const firstEq = vi.fn().mockReturnValue({ eq: secondEq });
+    mockSupabase.select.mockReturnValue({ eq: firstEq });
+    
+    const { result } = renderHook(() => useAnnotations(mockSongId));
+    await vi.waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.updateAnnotation('u1', 'new content', 'red');
+    });
+
+    expect(result.current.annotations[0].content).toBe('new content');
+    expect(result.current.annotations[0].color).toBe('red');
+    expect(manchDB.annotations.update).toHaveBeenCalledWith('u1', expect.objectContaining({ content: 'new content', color: 'red' }));
+    expect(mockSupabase.update).toHaveBeenCalledWith(expect.objectContaining({ content: 'new content', color: 'red' }));
+  });
+
+  it('deletes annotation online', async () => {
+    (useOffline as any).mockReturnValue({ isOnline: true });
+    const mockData = [{ id: 'd1', type: 'general', content: 'test' }];
+    const secondEq = vi.fn().mockResolvedValue({ data: mockData });
+    const firstEq = vi.fn().mockReturnValue({ eq: secondEq });
+    mockSupabase.select.mockReturnValue({ eq: firstEq });
+    
+    const { result } = renderHook(() => useAnnotations(mockSongId));
+    await vi.waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    await act(async () => {
+      await result.current.deleteAnnotation('d1');
+    });
+
+    expect(result.current.annotations).toHaveLength(0);
+    expect(manchDB.annotations.delete).toHaveBeenCalledWith('d1');
+    expect(mockSupabase.delete).toHaveBeenCalled();
   });
 });

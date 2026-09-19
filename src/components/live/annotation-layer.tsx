@@ -3,9 +3,7 @@
 import { useState } from 'react';
 import { MessageSquarePlus, Trash2 } from 'lucide-react';
 import { AnnotationEditor } from './annotation-editor';
-import type { Database } from '@/types/database';
-
-type Annotation = Database['public']['Tables']['annotations']['Row'];
+import type { Annotation } from '@/types/annotation';
 
 interface AnnotationLayerProps {
   lineNumber: number;

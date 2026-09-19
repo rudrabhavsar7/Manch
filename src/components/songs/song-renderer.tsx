@@ -28,7 +28,7 @@ export function SongRenderer({
       style={{ fontSize: `${fontSize}px` }}
     >
       {parsed.lines.map((line, i) => (
-        <div key={i} className="relative">
+        <div key={i} className="group relative">
           {renderAnnotation?.(i)}
           <ChordLine segments={line.segments} />
         </div>

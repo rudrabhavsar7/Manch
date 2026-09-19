@@ -54,14 +54,14 @@ export function SongDisplay({ song, isAdmin }: SongDisplayProps) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-4 bg-elevated p-2 rounded-lg">
+          <GeneralNotes
+            annotations={generalAnnotations}
+            onAdd={(content, color) => addAnnotation('general', content, color)}
+            onDelete={deleteAnnotation}
+          />
+          <div className="w-px h-6 bg-border mx-1" />
           {!isAdmin && (
             <>
-              <GeneralNotes
-                annotations={generalAnnotations}
-                onAdd={(content, color) => addAnnotation('general', content, color)}
-                onDelete={deleteAnnotation}
-              />
-              <div className="w-px h-6 bg-border mx-1" />
               <TransposeControl songId={song.id} originalKey={song.key || 'C'} />
               <div className="w-px h-6 bg-border mx-1" />
             </>

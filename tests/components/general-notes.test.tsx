@@ -21,4 +21,32 @@ describe('GeneralNotes', () => {
     expect(screen.getByText('My Notes')).toBeInTheDocument();
     expect(screen.getByText('General Note 1')).toBeInTheDocument();
   });
+
+  it('adds a new note', () => {
+    const onAdd = vi.fn();
+    render(<GeneralNotes annotations={mockAnnotations} onAdd={onAdd} onDelete={vi.fn()} />);
+    
+    fireEvent.click(screen.getByRole('button', { name: /Notes/ }));
+    fireEvent.click(screen.getByText('Add Note'));
+    
+    const textarea = screen.getByPlaceholderText('Add your note...');
+    fireEvent.change(textarea, { target: { value: 'New General Note' } });
+    
+    fireEvent.click(screen.getByText('Save'));
+    expect(onAdd).toHaveBeenCalledWith('New General Note', '#fbbf24');
+  });
+
+  it('deletes a note', async () => {
+    const onDelete = vi.fn();
+    render(<GeneralNotes annotations={mockAnnotations} onAdd={vi.fn()} onDelete={onDelete} />);
+    
+    fireEvent.click(screen.getByRole('button', { name: /Notes/ }));
+    
+    await screen.findByText('General Note 1');
+    const deleteButton = document.querySelector('.text-destructive') as HTMLButtonElement;
+    expect(deleteButton).not.toBeNull();
+    fireEvent.click(deleteButton);
+    
+    expect(onDelete).toHaveBeenCalledWith('1');
+  });
 });
