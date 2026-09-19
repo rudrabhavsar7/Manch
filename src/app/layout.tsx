@@ -17,6 +17,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'Manch — Live Gig Companion',
   description: 'Real-time setlist sync for musicians',
+  manifest: '/manifest.json',
+};
+
+export const viewport = {
+  themeColor: '#0C0C0E',
 };
 
 export default function RootLayout({
