@@ -19,12 +19,21 @@ export default async function GigsPage() {
     return null;
   }
 
+  const { data: memberships } = await supabase
+    .from('gig_members')
+    .select('gig_id')
+    .eq('user_id', user.id);
+
+  const memberGigIds = (memberships ?? []).map((m) => m.gig_id);
+  const filter =
+    memberGigIds.length > 0
+      ? `admin_id.eq.${user.id},id.in.(${memberGigIds.join(',')})`
+      : `admin_id.eq.${user.id}`;
+
   const { data: gigs } = await supabase
     .from('gigs')
     .select('*')
-    .or(
-      `admin_id.eq.${user.id},id.in.(select gig_id from gig_members where user_id = '${user.id}')`,
-    )
+    .or(filter)
     .order('created_at', { ascending: false });
 
   const typedGigs = (gigs ?? []) as Gig[];

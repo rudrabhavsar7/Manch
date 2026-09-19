@@ -8,13 +8,22 @@ const {
   mockRedirect,
   mockGetUser,
   mockGigsOrder,
+  mockMembershipsEq,
   mockServerFrom,
 } = vi.hoisted(() => {
   const mockRedirect = vi.fn();
   const mockGetUser = vi.fn();
   const mockGigsOrder = vi.fn();
+  const mockMembershipsEq = vi.fn();
 
   const mockServerFrom = vi.fn((table: string) => {
+    if (table === 'gig_members') {
+      return {
+        select: vi.fn(() => ({
+          eq: mockMembershipsEq,
+        })),
+      };
+    }
     if (table === 'gigs') {
       return {
         select: vi.fn(() => ({
@@ -33,6 +42,7 @@ const {
     mockRedirect,
     mockGetUser,
     mockGigsOrder,
+    mockMembershipsEq,
     mockServerFrom,
   };
 });
@@ -107,6 +117,10 @@ describe('Gig Pages', () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-1', email: 'musician@band.com' } },
     });
+    mockMembershipsEq.mockResolvedValue({
+      data: [{ gig_id: 'gig-1' }, { gig_id: 'gig-2' }],
+      error: null,
+    });
     mockGigsOrder.mockResolvedValue({ data: sampleGigs });
   });
 
@@ -135,6 +149,7 @@ describe('Gig Pages', () => {
     });
 
     it('renders empty state when no gigs exist', async () => {
+      mockMembershipsEq.mockResolvedValue({ data: [] });
       mockGigsOrder.mockResolvedValue({ data: [] });
 
       const jsx = await GigsPage();

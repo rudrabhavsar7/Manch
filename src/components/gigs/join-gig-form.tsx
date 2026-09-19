@@ -13,6 +13,16 @@ import { CacheManager } from '@/lib/offline/cache-manager';
 import type { Song, Setlist } from '@/lib/offline/db';
 import { parseGigQrData } from '@/lib/utils/qr';
 
+interface SetlistSongWithRelation {
+  song_id: string;
+  position: number;
+  songs?: Song | null;
+}
+
+interface SetlistWithRelations extends Setlist {
+  setlist_songs?: SetlistSongWithRelation[];
+}
+
 export function JoinGigForm() {
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,8 +31,14 @@ export function JoinGigForm() {
   const supabase = useSupabase();
   const router = useRouter();
 
-  async function joinByPin(pinValue: string) {
-    if (!pinValue || pinValue.trim().length === 0) {
+  async function joinGig({
+    pinValue,
+    gigIdValue,
+  }: {
+    pinValue?: string;
+    gigIdValue?: string;
+  }) {
+    if (!pinValue && !gigIdValue) {
       setError('Please enter a 4-digit PIN');
       return;
     }
@@ -36,50 +52,58 @@ export function JoinGigForm() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const formattedPin = pinValue.padStart(4, '0');
+      // 1. Lookup active live gig
+      let query = supabase.from('gigs').select('id, setlist_id, status').eq('status', 'live');
+      if (pinValue) {
+        query = query.eq('pin', pinValue.padStart(4, '0'));
+      } else if (gigIdValue) {
+        query = query.eq('id', gigIdValue);
+      }
 
-      // Find active gig by PIN
-      const { data: gig, error: gigErr } = await supabase
-        .from('gigs')
-        .select('*, setlists(*, setlist_songs(*, songs(*)))')
-        .eq('pin', formattedPin)
-        .eq('status', 'live')
-        .single();
-
+      const { data: gig, error: gigErr } = await query.single();
       if (gigErr || !gig) throw new Error('No active gig found with this PIN');
 
-      // Join as musician
-      const { error: memberErr } = await supabase.from('gig_members').upsert({
-        gig_id: gig.id,
-        user_id: user.id,
-        role: 'musician',
-      });
+      // 2. Insert membership first with onConflict so user becomes a member for RLS
+      const { error: memberErr } = await supabase.from('gig_members').upsert(
+        {
+          gig_id: gig.id,
+          user_id: user.id,
+          role: 'musician',
+        },
+        { onConflict: 'gig_id,user_id' },
+      );
 
       if (memberErr) {
         console.error('Failed to join gig member:', memberErr);
       }
 
-      // Cache gig data for offline
-      const joinedGig = gig as unknown as {
-        setlists?: (Setlist & {
-          setlist_songs?: Array<{ song_id: string; songs?: Song | null }>;
-        }) | null;
-      };
-      const setlist = joinedGig?.setlists;
-      if (setlist) {
-        const songs =
-          setlist.setlist_songs
-            ?.map((ss) => ss.songs)
-            .filter((s): s is Song => Boolean(s)) ?? [];
-        await CacheManager.cacheSongs(songs);
-        await CacheManager.cacheSetlist(setlist);
-        await CacheManager.cacheGigState(
-          gig.id,
-          setlist.id,
-          setlist.setlist_songs?.map((ss) => ss.song_id) ?? [],
-        );
+      // 3. Now query setlist & songs (user is now a member, satisfying is_gig_member() RLS)
+      if (gig.setlist_id) {
+        const { data: setlistData } = await supabase
+          .from('setlists')
+          .select('*, setlist_songs(*, songs(*))')
+          .eq('id', gig.setlist_id)
+          .single();
+
+        if (setlistData) {
+          const setlist = setlistData as unknown as SetlistWithRelations;
+          const sortedSetlistSongs = setlist.setlist_songs
+            ? [...setlist.setlist_songs].sort((a, b) => a.position - b.position)
+            : [];
+
+          const songs = sortedSetlistSongs
+            .map((ss) => ss.songs)
+            .filter((s): s is Song => Boolean(s));
+
+          const songIds = sortedSetlistSongs.map((ss) => ss.song_id);
+
+          await CacheManager.cacheSongs(songs);
+          await CacheManager.cacheSetlist(setlist);
+          await CacheManager.cacheGigState(gig.id, gig.setlist_id, songIds);
+        }
       }
 
+      // 4. Redirect to live gig page
       router.push(`/gigs/${gig.id}`);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Failed to join gig';
@@ -95,11 +119,11 @@ export function JoinGigForm() {
     const parsed = parseGigQrData(data);
     if (parsed.pin) {
       setPin(parsed.pin);
-      joinByPin(parsed.pin);
+      joinGig({ pinValue: parsed.pin });
     } else if (parsed.gigId) {
-      router.push(`/gigs/${parsed.gigId}`);
+      joinGig({ gigIdValue: parsed.gigId });
     } else {
-      joinByPin(data);
+      joinGig({ pinValue: data });
     }
   }
 
@@ -132,7 +156,7 @@ export function JoinGigForm() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                joinByPin(pin);
+                joinGig({ pinValue: pin });
               }}
               className="space-y-4"
             >
@@ -159,7 +183,6 @@ export function JoinGigForm() {
 
               <Button
                 type="submit"
-                onClick={() => joinByPin(pin)}
                 disabled={loading || pin.length < 4}
                 className="w-full bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
               >

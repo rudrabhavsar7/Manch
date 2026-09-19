@@ -49,6 +49,7 @@ vi.mock('@/lib/offline/cache-manager', () => ({
 const mockGetUser = vi.fn();
 const mockGigsSelect = vi.fn();
 const mockMembersUpsert = vi.fn();
+const mockSetlistsSelect = vi.fn();
 
 const mockFrom = vi.fn((table: string) => {
   if (table === 'gigs') {
@@ -59,6 +60,11 @@ const mockFrom = vi.fn((table: string) => {
   if (table === 'gig_members') {
     return {
       upsert: mockMembersUpsert,
+    };
+  }
+  if (table === 'setlists') {
+    return {
+      select: mockSetlistsSelect,
     };
   }
   return {};
@@ -89,28 +95,26 @@ describe('JoinGigForm', () => {
 
   const sampleGig = {
     id: 'gig-live-99',
-    name: 'Friday Live Gig',
-    admin_id: 'user-admin',
     setlist_id: 'set-1',
-    pin: '1234',
     status: 'live',
-    setlists: {
-      id: 'set-1',
-      name: 'Friday Live Set',
-      owner_id: 'user-admin',
-      privacy: 'public',
-      created_at: '2026-01-01',
-      updated_at: '2026-01-01',
-      setlist_songs: [
-        {
-          id: 'ss-1',
-          setlist_id: 'set-1',
-          song_id: 'song-1',
-          position: 0,
-          songs: sampleSong,
-        },
-      ],
-    },
+  };
+
+  const sampleSetlist = {
+    id: 'set-1',
+    name: 'Friday Live Set',
+    owner_id: 'user-admin',
+    privacy: 'public',
+    created_at: '2026-01-01',
+    updated_at: '2026-01-01',
+    setlist_songs: [
+      {
+        id: 'ss-1',
+        setlist_id: 'set-1',
+        song_id: 'song-1',
+        position: 0,
+        songs: sampleSong,
+      },
+    ],
   };
 
   beforeEach(() => {
@@ -121,14 +125,37 @@ describe('JoinGigForm', () => {
       data: { user: { id: 'musician-1', email: 'musician@band.com' } },
     });
 
-    mockGigsSelect.mockReturnValue({
+    mockGigsSelect.mockImplementation(() => {
+      const builder: any = {
+        eq: vi.fn((field: string, val: string) => {
+          if (field === 'status') {
+            return builder;
+          }
+          if (field === 'id') {
+            return {
+              single: vi.fn().mockResolvedValue({
+                data: { ...sampleGig, id: val },
+                error: null,
+              }),
+            };
+          }
+          return {
+            single: vi.fn().mockResolvedValue({
+              data: sampleGig,
+              error: null,
+            }),
+          };
+        }),
+      };
+      return builder;
+    });
+
+    mockSetlistsSelect.mockReturnValue({
       eq: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({
-            data: sampleGig,
-            error: null,
-          }),
-        })),
+        single: vi.fn().mockResolvedValue({
+          data: sampleSetlist,
+          error: null,
+        }),
       })),
     });
 
@@ -157,7 +184,7 @@ describe('JoinGigForm', () => {
     expect(joinButton).toBeEnabled();
   });
 
-  it('joins gig by PIN, adds musician member, pre-caches data, and redirects to /gigs/[id]', async () => {
+  it('joins gig by PIN, adds musician member with onConflict, pre-caches data, and redirects to /gigs/[id]', async () => {
     const user = userEvent.setup();
     render(<JoinGigForm />);
 
@@ -168,13 +195,16 @@ describe('JoinGigForm', () => {
     await user.click(joinButton);
 
     await waitFor(() => {
-      expect(mockMembersUpsert).toHaveBeenCalledWith({
-        gig_id: 'gig-live-99',
-        user_id: 'musician-1',
-        role: 'musician',
-      });
+      expect(mockMembersUpsert).toHaveBeenCalledWith(
+        {
+          gig_id: 'gig-live-99',
+          user_id: 'musician-1',
+          role: 'musician',
+        },
+        { onConflict: 'gig_id,user_id' },
+      );
       expect(CacheManager.cacheSongs).toHaveBeenCalledWith([sampleSong]);
-      expect(CacheManager.cacheSetlist).toHaveBeenCalledWith(sampleGig.setlists);
+      expect(CacheManager.cacheSetlist).toHaveBeenCalledWith(sampleSetlist);
       expect(CacheManager.cacheGigState).toHaveBeenCalledWith(
         'gig-live-99',
         'set-1',
@@ -186,7 +216,7 @@ describe('JoinGigForm', () => {
 
   it('displays error when no active gig matches the PIN', async () => {
     const user = userEvent.setup();
-    mockGigsSelect.mockReturnValue({
+    mockGigsSelect.mockImplementation(() => ({
       eq: vi.fn(() => ({
         eq: vi.fn(() => ({
           single: vi.fn().mockResolvedValue({
@@ -195,7 +225,7 @@ describe('JoinGigForm', () => {
           }),
         })),
       })),
-    });
+    }));
 
     render(<JoinGigForm />);
 
@@ -244,12 +274,13 @@ describe('JoinGigForm', () => {
     await waitFor(() => {
       expect(mockMembersUpsert).toHaveBeenCalledWith(
         expect.objectContaining({ gig_id: 'gig-live-99' }),
+        { onConflict: 'gig_id,user_id' },
       );
       expect(mockPush).toHaveBeenCalledWith('/gigs/gig-live-99');
     });
   });
 
-  it('redirects directly when QR code with gigId is scanned', async () => {
+  it('joins gig and pre-caches when QR code with gigId is scanned', async () => {
     const user = userEvent.setup();
     render(<JoinGigForm />);
 
@@ -265,6 +296,11 @@ describe('JoinGigForm', () => {
     });
 
     await waitFor(() => {
+      expect(mockMembersUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({ gig_id: 'direct-gig-789' }),
+        { onConflict: 'gig_id,user_id' },
+      );
+      expect(CacheManager.cacheSongs).toHaveBeenCalledWith([sampleSong]);
       expect(mockPush).toHaveBeenCalledWith('/gigs/direct-gig-789');
     });
   });
