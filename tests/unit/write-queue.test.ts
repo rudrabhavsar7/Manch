@@ -13,6 +13,13 @@ vi.mock('@/lib/offline/db', async () => {
           mockPendingWrites.set(item.id, item);
         }),
         toArray: vi.fn(async () => Array.from(mockPendingWrites.values())),
+        orderBy: vi.fn((field: keyof PendingWrite) => ({
+          toArray: vi.fn(async () =>
+            Array.from(mockPendingWrites.values()).sort(
+              (a, b) => (a[field] as number) - (b[field] as number),
+            ),
+          ),
+        })),
         get: vi.fn(async (id: string) => mockPendingWrites.get(id)),
         delete: vi.fn(async (id: string) => {
           mockPendingWrites.delete(id);
@@ -78,9 +85,17 @@ describe('WriteQueue', () => {
     expect(count).toBe(2);
   });
 
-  it('returns all pending writes', async () => {
+  it('returns all pending writes in FIFO order sorted by createdAt', async () => {
     const { WriteQueue } = await import('@/lib/offline/write-queue');
 
+    const w2: PendingWrite = {
+      id: 'w2',
+      table: 'annotations',
+      operation: 'insert',
+      payload: { id: '2' },
+      createdAt: 200,
+      retries: 0,
+    };
     const w1: PendingWrite = {
       id: 'w1',
       table: 'annotations',
@@ -89,10 +104,11 @@ describe('WriteQueue', () => {
       createdAt: 100,
       retries: 0,
     };
+    mockPendingWrites.set('w2', w2);
     mockPendingWrites.set('w1', w1);
 
     const pending = await WriteQueue.getPending();
-    expect(pending).toEqual([w1]);
+    expect(pending).toEqual([w1, w2]);
   });
 
   it('marks a write as completed by removing it from the queue', async () => {
@@ -242,6 +258,46 @@ describe('WriteQueue', () => {
       expect(mockPendingWrites.get('w-fail')?.retries).toBe(1);
       // Succeeded item removed
       expect(mockPendingWrites.has('w-ok')).toBe(false);
+    });
+
+    it('fails and retries if update payload is missing id', async () => {
+      const { WriteQueue } = await import('@/lib/offline/write-queue');
+      const mockSupabase = {
+        from: vi.fn(),
+      };
+
+      mockPendingWrites.set('w-noid', {
+        id: 'w-noid',
+        table: 'annotations',
+        operation: 'update',
+        payload: { content: 'no id here' },
+        createdAt: 1,
+        retries: 0,
+      });
+
+      const result = await WriteQueue.flush(mockSupabase as any);
+      expect(result).toEqual({ succeeded: 0, failed: 1 });
+      expect(mockPendingWrites.get('w-noid')?.retries).toBe(1);
+    });
+
+    it('fails and retries if delete payload is missing id', async () => {
+      const { WriteQueue } = await import('@/lib/offline/write-queue');
+      const mockSupabase = {
+        from: vi.fn(),
+      };
+
+      mockPendingWrites.set('w-noid', {
+        id: 'w-noid',
+        table: 'annotations',
+        operation: 'delete',
+        payload: {},
+        createdAt: 1,
+        retries: 0,
+      });
+
+      const result = await WriteQueue.flush(mockSupabase as any);
+      expect(result).toEqual({ succeeded: 0, failed: 1 });
+      expect(mockPendingWrites.get('w-noid')?.retries).toBe(1);
     });
   });
 });

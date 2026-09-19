@@ -35,7 +35,7 @@ export class WriteQueue {
   }
 
   static async getPending(): Promise<PendingWrite[]> {
-    return manchDB.pendingWrites.toArray();
+    return manchDB.pendingWrites.orderBy('createdAt').toArray();
   }
 
   static async markCompleted(id: string): Promise<void> {
@@ -65,11 +65,13 @@ export class WriteQueue {
           if (error) throw error;
         } else if (write.operation === 'update') {
           const { id: payloadId, ...rest } = write.payload;
+          if (!payloadId) throw new Error('Missing id in update payload');
           const { error } = await (supabase.from(write.table) as unknown as {
             update: (data: unknown) => { eq: (col: string, val: unknown) => Promise<{ error: unknown }> };
           }).update(rest).eq('id', payloadId);
           if (error) throw error;
         } else if (write.operation === 'delete') {
+          if (!write.payload.id) throw new Error('Missing id in delete payload');
           const { error } = await (supabase.from(write.table) as unknown as {
             delete: () => { eq: (col: string, val: unknown) => Promise<{ error: unknown }> };
           }).delete().eq('id', write.payload.id);

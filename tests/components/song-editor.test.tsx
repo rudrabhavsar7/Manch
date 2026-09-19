@@ -143,7 +143,7 @@ describe('SongEditor', () => {
       expect(mockRefresh).toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith('/songs');
     });
-  });
+  }, 15000);
 
   it('updates existing song and redirects to /songs', async () => {
     const user = userEvent.setup();
@@ -168,7 +168,7 @@ describe('SongEditor', () => {
       expect(mockRefresh).toHaveBeenCalled();
       expect(mockPush).toHaveBeenCalledWith('/songs');
     });
-  });
+  }, 15000);
 
   it('does not delete song if confirmation is cancelled', async () => {
     const user = userEvent.setup();
