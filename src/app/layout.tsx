@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils/cn';
+import { AppShell } from '@/components/layout/app-shell';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -30,10 +31,10 @@ export default function RootLayout({
           inter.className,
           inter.variable,
           jetbrainsMono.variable,
-          'min-h-screen bg-background antialiased'
+          'min-h-screen bg-background text-foreground antialiased'
         )}
       >
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
