@@ -72,7 +72,7 @@ describe('SupabaseRealtimeProvider', () => {
     expect(mockChannel.send).toHaveBeenCalledWith({
       type: 'broadcast',
       event: 'sync',
-      payload: { type: 'PONG', from: 'user-1' }
+      payload: { type: 'PONG', from: 'user-1', timestamp: expect.any(Number) }
     });
   });
 });

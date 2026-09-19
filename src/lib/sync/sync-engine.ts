@@ -10,9 +10,9 @@ export class SyncEngine {
   private onMessageHandler: ((msg: SyncMessage) => void) | null = null;
   private onStatusChangeHandler: ((status: ConnectionStatus, transport: 'webrtc' | 'supabase' | 'none') => void) | null = null;
   
-  constructor() {
-    this.webrtc = new WebRTCProvider();
-    this.supabase = new SupabaseRealtimeProvider();
+  constructor(webrtc?: TransportProvider, supabase?: TransportProvider) {
+    this.webrtc = (webrtc as WebRTCProvider) || new WebRTCProvider();
+    this.supabase = (supabase as SupabaseRealtimeProvider) || new SupabaseRealtimeProvider();
     
     this.webrtc.onMessage(this.handleMessage.bind(this));
     this.supabase.onMessage(this.handleMessage.bind(this));
@@ -32,6 +32,7 @@ export class SyncEngine {
       });
     } catch (e) {
       console.warn('WebRTC connection failed, falling back to Supabase', e);
+      this.activeTransport = this.supabase;
       this.onStatusChangeHandler?.('connecting', 'supabase');
       await this.supabase.connect(gigId, userId, isHost);
       this.activeTransport = this.supabase;
@@ -73,7 +74,7 @@ export class SyncEngine {
         this.onStatusChangeHandler?.('connected', 'webrtc');
       } else if (status === 'disconnected' || status === 'reconnecting') {
         this.activeTransport = this.supabase;
-        this.onStatusChangeHandler?.('reconnecting', 'supabase');
+        this.onStatusChangeHandler?.(this.supabase.status, 'supabase');
       } else {
         if (this.activeTransport === this.webrtc) {
           this.onStatusChangeHandler?.(status, 'webrtc');

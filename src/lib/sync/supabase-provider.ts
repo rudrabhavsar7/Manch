@@ -13,7 +13,7 @@ export class SupabaseRealtimeProvider implements TransportProvider {
   
   private onMessageHandler: ((msg: SyncMessage) => void) | null = null;
   private onStatusChangeHandler: ((status: ConnectionStatus) => void) | null = null;
-  private status: ConnectionStatus = 'disconnected';
+  public status: ConnectionStatus = 'disconnected';
   
   private pingInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -38,7 +38,7 @@ export class SupabaseRealtimeProvider implements TransportProvider {
       const msg = payload.payload as SyncMessage;
       if (this.onMessageHandler) {
         if (msg.type === 'PING') {
-           this.send({ type: 'PONG', from: this.userId! });
+           this.send({ type: 'PONG', from: this.userId!, timestamp: Date.now() });
         }
         this.onMessageHandler(msg);
       }
@@ -93,7 +93,7 @@ export class SupabaseRealtimeProvider implements TransportProvider {
     this.stopHeartbeat();
     this.pingInterval = setInterval(() => {
       if (this.userId) {
-        this.send({ type: 'PING', from: this.userId });
+        this.send({ type: 'PING', from: this.userId, timestamp: Date.now() });
       }
     }, 5000);
   }

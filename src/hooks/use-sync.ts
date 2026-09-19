@@ -46,6 +46,7 @@ export function useSync() {
               activeSongId: useGigStore.getState().activeSongId,
               songIds: useGigStore.getState().songIds,
               status: useGigStore.getState().status as 'live' | 'paused' | 'ended',
+              timestamp: Date.now(),
             });
           }
           break;
@@ -60,7 +61,7 @@ export function useSync() {
     await engineRef.current.connect(gigIdToConnect, userId, isHost);
     
     if (!isHost) {
-      engineRef.current.send({ type: 'GIG_STATE_REQUEST', from: userId });
+      engineRef.current.send({ type: 'GIG_STATE_REQUEST', from: userId, timestamp: Date.now() });
     }
   }, [setActiveSongId, setSongIds, setStatus, updateMemberRole, setConnectionStatus, setTransport]);
 

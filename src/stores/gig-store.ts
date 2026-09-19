@@ -14,7 +14,9 @@ interface GigState {
   myRole: 'admin' | 'co-admin' | 'musician';
   
   setGigId: (id: string | null) => void;
+  setGig: (id: string, role: 'admin' | 'co-admin' | 'musician') => void;
   setActiveSongId: (id: string | null) => void;
+  setActiveSong: (id: string | null) => void;
   setSongIds: (ids: string[]) => void;
   setStatus: (status: 'draft' | 'live' | 'paused' | 'ended') => void;
   setMembers: (members: Record<string, GigMember>) => void;
@@ -32,7 +34,9 @@ export const useGigStore = create<GigState>((set) => ({
   myRole: 'musician',
 
   setGigId: (id) => set({ gigId: id }),
+  setGig: (id, role) => set({ gigId: id, myRole: role }),
   setActiveSongId: (id) => set({ activeSongId: id }),
+  setActiveSong: (id) => set({ activeSongId: id }),
   setSongIds: (ids) => set({ songIds: ids }),
   setStatus: (status) => set({ status }),
   setMembers: (members) => set({ members }),

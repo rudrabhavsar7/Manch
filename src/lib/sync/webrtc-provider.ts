@@ -21,7 +21,7 @@ export class WebRTCProvider implements TransportProvider {
   private onStatusChangeHandler: ((status: ConnectionStatus) => void) | null = null;
   
   private signaling: WebRTCSignaling;
-  private status: ConnectionStatus = 'disconnected';
+  public status: ConnectionStatus = 'disconnected';
   
   private pingInterval: ReturnType<typeof setInterval> | null = null;
   
@@ -37,26 +37,47 @@ export class WebRTCProvider implements TransportProvider {
     }
   }
 
+  private connectPromiseResolve: (() => void) | null = null;
+  private connectPromiseReject: ((err: Error) => void) | null = null;
+
   async connect(gigId: string, userId: string, isHost: boolean): Promise<void> {
     this.gigId = gigId;
     this.userId = userId;
     this.isHost = isHost;
     
     this.setStatus('connecting');
-    try {
-      await this.signaling.connect(gigId, userId);
-      
-      if (!isHost) {
-        this.signaling.send({ type: 'JOIN', from: userId });
-      } else {
-        this.setStatus('connected');
-      }
-      
-      this.startHeartbeat();
-    } catch (e) {
-      this.setStatus('disconnected');
-      throw e;
-    }
+    
+    return new Promise((resolve, reject) => {
+      let isResolved = false;
+      this.connectPromiseResolve = () => {
+        if (isResolved) return;
+        isResolved = true;
+        clearTimeout(timeout);
+        resolve();
+      };
+      this.connectPromiseReject = (err: Error) => {
+        if (isResolved) return;
+        isResolved = true;
+        clearTimeout(timeout);
+        this.setStatus('disconnected');
+        reject(err);
+      };
+
+      const timeout = setTimeout(() => {
+        if (!isResolved) {
+          this.connectPromiseReject?.(new Error('WebRTC connection timeout'));
+        }
+      }, 7000);
+
+      this.signaling.connect(gigId, userId).then(() => {
+        if (!isHost) {
+          this.signaling.send({ type: 'JOIN', from: userId });
+        }
+        // Wait for DataChannel to open to resolve
+      }).catch(e => {
+        this.connectPromiseReject?.(e);
+      });
+    });
   }
 
   disconnect(): void {
@@ -185,8 +206,19 @@ export class WebRTCProvider implements TransportProvider {
         try {
           const msg = JSON.parse(event.data) as SyncMessage;
           if (msg.type === 'PING') {
-            channel.send(JSON.stringify({ type: 'PONG', from: this.userId }));
+            channel.send(JSON.stringify({ type: 'PONG', from: this.userId, timestamp: Date.now() }));
+            return;
           }
+          
+          if (this.isHost) {
+            // Rebroadcast to all other peers
+            this.channels.forEach((otherChannel, otherPeerId) => {
+              if (otherPeerId !== peerId && otherChannel.readyState === 'open') {
+                otherChannel.send(event.data);
+              }
+            });
+          }
+          
           this.onMessageHandler(msg);
         } catch (e) {
           console.error('Failed to parse WebRTC message', e);
@@ -196,21 +228,23 @@ export class WebRTCProvider implements TransportProvider {
   }
   
   private updateOverallStatus() {
-    if (this.isHost) {
-      return;
-    }
-    
     let hasOpen = false;
     this.channels.forEach(channel => {
       if (channel.readyState === 'open') hasOpen = true;
     });
     
     if (hasOpen) {
-      this.setStatus('connected');
-    } else if (this.status === 'connected') {
-      this.setStatus('reconnecting');
-      if (this.userId) {
-        this.signaling.send({ type: 'JOIN', from: this.userId });
+      if (this.status !== 'connected') {
+        this.setStatus('connected');
+        this.startHeartbeat();
+        this.connectPromiseResolve?.();
+      }
+    } else {
+      if (this.status === 'connected') {
+        this.setStatus('reconnecting');
+        if (this.userId && !this.isHost) {
+          this.signaling.send({ type: 'JOIN', from: this.userId });
+        }
       }
     }
   }
@@ -219,7 +253,7 @@ export class WebRTCProvider implements TransportProvider {
     this.stopHeartbeat();
     this.pingInterval = setInterval(() => {
       if (this.userId) {
-        this.send({ type: 'PING', from: this.userId });
+        this.send({ type: 'PING', from: this.userId, timestamp: Date.now() });
       }
     }, 5000);
   }

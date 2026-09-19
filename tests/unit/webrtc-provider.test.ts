@@ -33,6 +33,14 @@ describe('WebRTCProvider', () => {
       onicecandidate = null;
       onconnectionstatechange = null;
     };
+    (global as any).RTCSessionDescription = class {
+      type: string;
+      sdp: string;
+      constructor(init: RTCSessionDescriptionInit) {
+        this.type = init.type;
+        this.sdp = init.sdp || '';
+      }
+    };
   });
 
   it('connects as host', async () => {
@@ -40,8 +48,17 @@ describe('WebRTCProvider', () => {
     const statusHandler = vi.fn();
     provider.onStatusChange(statusHandler);
     
-    await provider.connect('gig-1', 'host-1', true);
+    const connectPromise = provider.connect('gig-1', 'host-1', true);
     
+    // Trigger onopen manually
+    // The problem is we need to simulate a signal to create a channel
+    const signalHandler = (provider as any).signaling.onSignal.mock.calls[0][0];
+    await signalHandler({ type: 'JOIN', from: 'client-1' });
+    
+    const channel = (provider as any).channels.get('client-1');
+    channel.onopen();
+    
+    await connectPromise;
     expect(statusHandler).toHaveBeenCalledWith('connected');
   });
 
@@ -50,9 +67,28 @@ describe('WebRTCProvider', () => {
     const statusHandler = vi.fn();
     provider.onStatusChange(statusHandler);
     
-    await provider.connect('gig-1', 'client-1', false);
+    const connectPromise = provider.connect('gig-1', 'client-1', false);
     
-    // Status is 'connecting' until channels open, which we mock in setup
-    expect(statusHandler).toHaveBeenCalledWith('connecting');
+    const signalHandler = (provider as any).signaling.onSignal.mock.calls[0][0];
+    await signalHandler({ type: 'OFFER', from: 'host-1', to: 'client-1', sdp: {} });
+    
+    const pc = (provider as any).peers.get('host-1');
+    pc.ondatachannel({
+      channel: {
+        onopen: null,
+        onclose: null,
+        onmessage: null,
+        send: vi.fn(),
+        readyState: 'open',
+      }
+    });
+    
+    const channel = (provider as any).channels.get('host-1');
+    if (channel && channel.onopen) {
+      channel.onopen();
+    }
+    
+    await connectPromise;
+    expect(statusHandler).toHaveBeenCalledWith('connected');
   });
 });

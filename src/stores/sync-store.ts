@@ -1,11 +1,11 @@
 import { create } from 'zustand';
-import { ConnectionStatus } from '../lib/sync/message-types';
+import { ConnectionStatus, TransportType } from '../lib/sync/message-types';
 
 interface SyncState {
-  transport: 'webrtc' | 'supabase' | 'none';
+  transport: TransportType;
   connectionStatus: ConnectionStatus;
   
-  setTransport: (transport: 'webrtc' | 'supabase' | 'none') => void;
+  setTransport: (transport: TransportType) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
 }
 
