@@ -8,6 +8,7 @@ interface SongRendererProps {
   transpose: number;
   fontSize?: number;
   className?: string;
+  renderAnnotation?: (lineNumber: number) => React.ReactNode;
 }
 
 export function SongRenderer({
@@ -15,6 +16,7 @@ export function SongRenderer({
   transpose,
   fontSize = 16,
   className,
+  renderAnnotation,
 }: SongRendererProps) {
   const safeContent = content || '';
   const transposedContent = transposeSong(safeContent, transpose);
@@ -26,7 +28,10 @@ export function SongRenderer({
       style={{ fontSize: `${fontSize}px` }}
     >
       {parsed.lines.map((line, i) => (
-        <ChordLine key={i} segments={line.segments} />
+        <div key={i} className="relative">
+          {renderAnnotation?.(i)}
+          <ChordLine segments={line.segments} />
+        </div>
       ))}
     </div>
   );

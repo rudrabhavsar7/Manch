@@ -6,6 +6,9 @@ import { AutoScroll } from './auto-scroll';
 import { SongRenderer } from '@/components/songs/song-renderer';
 import { useUIStore } from '@/stores/ui-store';
 import { Badge } from '@/components/ui/badge';
+import { useAnnotations } from '@/hooks/use-annotations';
+import { GeneralNotes } from './general-notes';
+import { AnnotationLayer } from './annotation-layer';
 
 type Song = Tables<'songs'>;
 
@@ -19,6 +22,7 @@ export function SongDisplay({ song, isAdmin }: SongDisplayProps) {
   const fontSize = useUIStore((state) => state.fontSize);
   const transpose = useUIStore((state) => state.transposeMap[song?.id || ''] || 0);
   const scrollLock = useUIStore((state) => state.scrollLock);
+  const { inlineAnnotations, generalAnnotations, addAnnotation, deleteAnnotation } = useAnnotations(song?.id || '');
 
   if (!song) {
     return (
@@ -52,6 +56,12 @@ export function SongDisplay({ song, isAdmin }: SongDisplayProps) {
         <div className="flex flex-wrap items-center gap-4 bg-elevated p-2 rounded-lg">
           {!isAdmin && (
             <>
+              <GeneralNotes
+                annotations={generalAnnotations}
+                onAdd={(content, color) => addAnnotation('general', content, color)}
+                onDelete={deleteAnnotation}
+              />
+              <div className="w-px h-6 bg-border mx-1" />
               <TransposeControl songId={song.id} originalKey={song.key || 'C'} />
               <div className="w-px h-6 bg-border mx-1" />
             </>
@@ -72,6 +82,14 @@ export function SongDisplay({ song, isAdmin }: SongDisplayProps) {
             content={song.content} 
             transpose={transpose} 
             fontSize={fontSize} 
+            renderAnnotation={(lineNumber) => (
+              <AnnotationLayer
+                lineNumber={lineNumber}
+                annotations={inlineAnnotations}
+                onAdd={(content, color) => addAnnotation('inline', content, color, lineNumber)}
+                onDelete={deleteAnnotation}
+              />
+            )}
           />
         </div>
       </div>
