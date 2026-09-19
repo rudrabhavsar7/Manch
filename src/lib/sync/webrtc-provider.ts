@@ -49,31 +49,37 @@ export class WebRTCProvider implements TransportProvider {
     
     return new Promise((resolve, reject) => {
       let isResolved = false;
+      let timeout: ReturnType<typeof setTimeout> | null = null;
+
       this.connectPromiseResolve = () => {
         if (isResolved) return;
         isResolved = true;
-        clearTimeout(timeout);
+        if (timeout) clearTimeout(timeout);
         resolve();
       };
       this.connectPromiseReject = (err: Error) => {
         if (isResolved) return;
         isResolved = true;
-        clearTimeout(timeout);
+        if (timeout) clearTimeout(timeout);
         this.setStatus('disconnected');
         reject(err);
       };
 
-      const timeout = setTimeout(() => {
-        if (!isResolved) {
-          this.connectPromiseReject?.(new Error('WebRTC connection timeout'));
-        }
-      }, 7000);
+      if (!isHost) {
+        timeout = setTimeout(() => {
+          if (!isResolved) {
+            this.connectPromiseReject?.(new Error('WebRTC connection timeout'));
+          }
+        }, 7000);
+      }
 
       this.signaling.connect(gigId, userId).then(() => {
         if (!isHost) {
           this.signaling.send({ type: 'JOIN', from: userId });
+        } else {
+          this.setStatus('connected');
+          this.connectPromiseResolve?.();
         }
-        // Wait for DataChannel to open to resolve
       }).catch(e => {
         this.connectPromiseReject?.(e);
       });
@@ -210,7 +216,7 @@ export class WebRTCProvider implements TransportProvider {
             return;
           }
           
-          if (this.isHost) {
+          if (this.isHost && msg.type !== 'GIG_STATE_REQUEST') {
             // Rebroadcast to all other peers
             this.channels.forEach((otherChannel, otherPeerId) => {
               if (otherPeerId !== peerId && otherChannel.readyState === 'open') {
@@ -240,9 +246,9 @@ export class WebRTCProvider implements TransportProvider {
         this.connectPromiseResolve?.();
       }
     } else {
-      if (this.status === 'connected') {
+      if (this.status === 'connected' && !this.isHost) {
         this.setStatus('reconnecting');
-        if (this.userId && !this.isHost) {
+        if (this.userId) {
           this.signaling.send({ type: 'JOIN', from: this.userId });
         }
       }
