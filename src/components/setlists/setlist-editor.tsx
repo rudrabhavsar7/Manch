@@ -33,6 +33,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { GripVertical, X } from 'lucide-react';
 import { SongPicker } from './song-picker';
+import { ShareSetlistDialog } from './share-setlist-dialog';
 import { useSupabase } from '@/hooks/use-supabase';
 import type { Database } from '@/types/database';
 
@@ -348,6 +349,11 @@ export function SetlistEditor({
                   <SelectItem value="private">Private (invite only)</SelectItem>
                 </SelectContent>
               </Select>
+              {setlist && privacy === 'private' && (
+                <div className="pt-1">
+                  <ShareSetlistDialog setlistId={setlist.id} />
+                </div>
+              )}
             </div>
           </div>
 

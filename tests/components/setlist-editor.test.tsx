@@ -347,4 +347,26 @@ describe('SetlistEditor', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/setlists');
   });
+
+  it('renders Share button when editing an existing private setlist', () => {
+    const privateSetlist: Setlist = {
+      ...sampleSetlist,
+      id: 'private-set-1',
+      privacy: 'private',
+    };
+    render(<SetlistEditor setlist={privateSetlist} />);
+
+    expect(screen.getByRole('button', { name: /share/i })).toBeInTheDocument();
+  });
+
+  it('does not render Share button when setlist is public or newly created', () => {
+    // New setlist
+    const { unmount } = render(<SetlistEditor />);
+    expect(screen.queryByRole('button', { name: /share/i })).not.toBeInTheDocument();
+    unmount();
+
+    // Existing public setlist
+    render(<SetlistEditor setlist={sampleSetlist} />);
+    expect(screen.queryByRole('button', { name: /share/i })).not.toBeInTheDocument();
+  });
 });
