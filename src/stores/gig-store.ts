@@ -38,8 +38,8 @@ export const useGigStore = create<GigState>((set) => ({
 
   setGigId: (id) => set({ gigId: id }),
   setGig: (id, role) => set({ gigId: id, myRole: role }),
-  setActiveSongId: (id) => set({ activeSongId: id }),
-  setActiveSong: (id) => set({ activeSongId: id }),
+  setActiveSongId: (id) => set({ activeSongId: id, scrollPosition: null }),
+  setActiveSong: (id) => set({ activeSongId: id, scrollPosition: null }),
   setSongIds: (ids) => set({ songIds: ids }),
   setStatus: (status) => set({ status }),
   setMembers: (members) => set({ members }),
