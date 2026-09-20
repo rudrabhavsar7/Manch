@@ -116,7 +116,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
         </div>
 
         {/* Song Display */}
-        <SongDisplay song={activeSong} isAdmin={isAdmin} />
+        <SongDisplay song={activeSong} isAdmin={isAdmin} send={send} />
 
         {/* Members Panel */}
         {showMembers && (

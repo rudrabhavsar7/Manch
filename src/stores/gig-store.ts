@@ -12,6 +12,7 @@ interface GigState {
   status: 'draft' | 'live' | 'paused' | 'ended';
   members: Record<string, GigMember>;
   myRole: 'admin' | 'co-admin' | 'musician';
+  scrollPosition: { position: number; percentage: number } | null;
   
   setGigId: (id: string | null) => void;
   setGig: (id: string, role: 'admin' | 'co-admin' | 'musician') => void;
@@ -22,6 +23,7 @@ interface GigState {
   setMembers: (members: Record<string, GigMember>) => void;
   updateMemberRole: (userId: string, role: 'admin' | 'co-admin' | 'musician') => void;
   setMyRole: (role: 'admin' | 'co-admin' | 'musician') => void;
+  setScrollPosition: (pos: { position: number; percentage: number } | null) => void;
   reset: () => void;
 }
 
@@ -32,6 +34,7 @@ export const useGigStore = create<GigState>((set) => ({
   status: 'draft',
   members: {},
   myRole: 'musician',
+  scrollPosition: null,
 
   setGigId: (id) => set({ gigId: id }),
   setGig: (id, role) => set({ gigId: id, myRole: role }),
@@ -47,6 +50,7 @@ export const useGigStore = create<GigState>((set) => ({
     }
   })),
   setMyRole: (role) => set({ myRole: role }),
+  setScrollPosition: (pos) => set({ scrollPosition: pos }),
   reset: () => set({
     gigId: null,
     activeSongId: null,
@@ -54,5 +58,6 @@ export const useGigStore = create<GigState>((set) => ({
     status: 'draft',
     members: {},
     myRole: 'musician',
+    scrollPosition: null,
   })
 }));

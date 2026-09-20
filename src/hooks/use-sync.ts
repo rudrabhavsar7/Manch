@@ -7,7 +7,7 @@ import { SyncMessage } from '../lib/sync/message-types';
 export function useSync() {
   const engineRef = useRef<SyncEngine | null>(null);
   
-  const { setActiveSongId, setSongIds, setStatus, updateMemberRole } = useGigStore();
+  const { setActiveSongId, setSongIds, setStatus, updateMemberRole, setScrollPosition } = useGigStore();
   const { setConnectionStatus, setTransport } = useSyncStore();
   
   useEffect(() => {
@@ -27,6 +27,9 @@ export function useSync() {
     
     engineRef.current.onMessage((msg: SyncMessage) => {
       switch (msg.type) {
+        case 'SCROLL_SYNC':
+          setScrollPosition({ position: msg.position, percentage: msg.percentage });
+          break;
         case 'SONG_CHANGE':
           setActiveSongId(msg.songId);
           break;
@@ -63,7 +66,7 @@ export function useSync() {
     if (!isHost) {
       engineRef.current.send({ type: 'GIG_STATE_REQUEST', from: userId, timestamp: Date.now() });
     }
-  }, [setActiveSongId, setSongIds, setStatus, updateMemberRole, setConnectionStatus, setTransport]);
+  }, [setActiveSongId, setSongIds, setStatus, updateMemberRole, setScrollPosition, setConnectionStatus, setTransport]);
 
   const disconnect = useCallback(() => {
     engineRef.current?.disconnect();

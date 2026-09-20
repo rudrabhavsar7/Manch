@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { Tables } from '@/types/database';
 import { TransposeControl } from './transpose-control';
 import { FontSizeControl } from './font-size-control';
@@ -9,20 +9,56 @@ import { Badge } from '@/components/ui/badge';
 import { useAnnotations } from '@/hooks/use-annotations';
 import { GeneralNotes } from './general-notes';
 import { AnnotationLayer } from './annotation-layer';
+import { useGigStore } from '@/stores/gig-store';
+import { throttle } from '@/lib/utils/throttle';
 
 type Song = Tables<'songs'>;
 
 interface SongDisplayProps {
   song: Song | null;
   isAdmin: boolean;
+  send?: (msg: import('@/lib/sync/message-types').SyncMessage) => void;
 }
 
-export function SongDisplay({ song, isAdmin }: SongDisplayProps) {
+export function SongDisplay({ song, isAdmin, send }: SongDisplayProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fontSize = useUIStore((state) => state.fontSize);
   const transpose = useUIStore((state) => state.transposeMap[song?.id || ''] || 0);
   const scrollLock = useUIStore((state) => state.scrollLock);
+  const scrollPosition = useGigStore((state) => state.scrollPosition);
   const { inlineAnnotations, generalAnnotations, addAnnotation, deleteAnnotation } = useAnnotations(song?.id || '');
+
+  const throttledSend = React.useMemo(() => throttle((el: HTMLDivElement) => {
+    if (!isAdmin || !send) return;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll <= 0) return;
+    const percentage = el.scrollTop / maxScroll;
+    send({
+      type: 'SCROLL_SYNC',
+      position: el.scrollTop,
+      percentage,
+      timestamp: Date.now(),
+    });
+  }, 100), [isAdmin, send]);
+
+  const handleScroll = useCallback(() => {
+    if (scrollRef.current) {
+      throttledSend(scrollRef.current);
+    }
+  }, [throttledSend]);
+
+  useEffect(() => {
+    if (isAdmin || !scrollLock || !scrollPosition || !scrollRef.current) return;
+    const el = scrollRef.current;
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll <= 0) return;
+    
+    // Smooth scroll to the synced percentage
+    el.scrollTo({
+      top: scrollPosition.percentage * maxScroll,
+      behavior: 'smooth',
+    });
+  }, [scrollPosition, scrollLock, isAdmin]);
 
   if (!song) {
     return (
@@ -76,6 +112,7 @@ export function SongDisplay({ song, isAdmin }: SongDisplayProps) {
         ref={scrollRef}
         className={`flex-1 p-8 ${scrollLock ? 'overflow-hidden' : 'overflow-y-auto'}`}
         data-testid="song-scroll-container"
+        onScroll={isAdmin ? handleScroll : undefined}
       >
         <div className="max-w-4xl mx-auto pb-64">
           <SongRenderer 
