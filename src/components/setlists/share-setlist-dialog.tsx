@@ -72,7 +72,7 @@ export function ShareSetlistDialog({ setlistId, className }: ShareSetlistDialogP
     async function load() {
       const { data, error: err } = await supabase
         .from('setlist_shares')
-        .select('id, permission, users(email)')
+        .select('id, permission, users!user_id(email)')
         .eq('setlist_id', setlistId);
 
       if (!active) return;
@@ -106,8 +106,8 @@ export function ShareSetlistDialog({ setlistId, className }: ShareSetlistDialogP
   }, [open, setlistId, supabase]);
 
   async function handleShare() {
-    const trimmedEmail = email.trim();
-    if (!trimmedEmail) return;
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || loading) return;
 
     const currentUser = authUser ?? (await supabase.auth.getUser()).data?.user;
     if (!currentUser) {
@@ -127,6 +127,12 @@ export function ShareSetlistDialog({ setlistId, className }: ShareSetlistDialogP
 
     if (!targetUser || userLookupErr) {
       setError('No user found with that email');
+      setLoading(false);
+      return;
+    }
+
+    if (targetUser.id === currentUser.id) {
+      setError('Cannot share setlist with yourself');
       setLoading(false);
       return;
     }
@@ -177,6 +183,7 @@ export function ShareSetlistDialog({ setlistId, className }: ShareSetlistDialogP
   }
 
   async function handleRemove(shareId: string) {
+    setError(null);
     const { error: err } = await supabase
       .from('setlist_shares')
       .delete()

@@ -132,7 +132,7 @@ describe('ShareSetlistDialog', () => {
     expect(screen.getByText('edit')).toBeInTheDocument();
 
     expect(mockFrom).toHaveBeenCalledWith('setlist_shares');
-    expect(mockSetlistSharesSelect).toHaveBeenCalledWith('id, permission, users(email)');
+    expect(mockSetlistSharesSelect).toHaveBeenCalledWith('id, permission, users!user_id(email)');
     expect(mockSetlistSharesEq).toHaveBeenCalledWith('setlist_id', setlistId);
   });
 
@@ -354,5 +354,25 @@ describe('ShareSetlistDialog', () => {
     await user.click(screen.getByRole('button', { name: /share/i }));
 
     expect(await screen.findByText('Failed to load shares')).toBeInTheDocument();
+  });
+
+  it('displays error when attempting to share setlist with oneself', async () => {
+    mockUsersSingle.mockResolvedValueOnce({
+      data: { id: ownerUser.id },
+      error: null,
+    });
+
+    const user = userEvent.setup();
+    render(<ShareSetlistDialog setlistId={setlistId} />);
+
+    await user.click(screen.getByRole('button', { name: /share/i }));
+    await screen.findByText('drummer@band.com');
+
+    const emailInput = screen.getByPlaceholderText('musician@email.com');
+    await user.type(emailInput, ownerUser.email);
+    await user.click(screen.getByRole('button', { name: /add user/i }));
+
+    expect(await screen.findByText('Cannot share setlist with yourself')).toBeInTheDocument();
+    expect(mockSetlistSharesUpsert).not.toHaveBeenCalled();
   });
 });
