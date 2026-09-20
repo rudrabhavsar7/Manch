@@ -1,9 +1,12 @@
-export function throttle<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+export function throttle<Args extends unknown[]>(
+  fn: (...args: Args) => void,
+  ms: number
+): (...args: Args) => void {
   let lastCall = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let lastArgs: Parameters<T> | null = null;
+  let lastArgs: Args | null = null;
 
-  return ((...args: Parameters<T>) => {
+  return (...args: Args) => {
     const now = Date.now();
     const remaining = ms - (now - lastCall);
     lastArgs = args;
@@ -28,5 +31,5 @@ export function throttle<T extends (...args: unknown[]) => void>(fn: T, ms: numb
         }
       }, remaining);
     }
-  }) as unknown as T;
+  };
 }
