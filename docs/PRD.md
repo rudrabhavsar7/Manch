@@ -43,3 +43,8 @@ i currently do not have any design in my mind , i want you to decide the best de
 for furthure details grill me will discuss on this deeply
 
 and my aim is that this repo has all the necessary md files so that in each agent coding we do not need to expolicitly mention everything to the agent
+
+### Related Specifications & Architecture
+- [Design Specification](superpowers/specs/2026-09-18-manch-design.md)
+- [Implementation Plan](superpowers/plans/2026-09-18-manch-implementation.md)
+- [Design Language Guidelines](design-language.md)
