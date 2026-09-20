@@ -121,7 +121,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
 
         {/* Members Panel */}
         {showMembers && (
-          <div className="hidden lg:block shrink-0">
+          <div className="fixed inset-y-0 right-0 z-40 lg:static lg:z-auto shrink-0 shadow-lg lg:shadow-none bg-surface">
             <MemberList gigId={gig.id} isAdmin={myRole === 'admin'} onSend={send} />
           </div>
         )}

@@ -1,12 +1,9 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function throttle<T extends (...args: any[]) => void>(fn: T, ms: number): T {
+export function throttle<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
   let lastCall = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let lastArgs: any[] | null = null;
+  let lastArgs: Parameters<T> | null = null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((...args: any[]) => {
+  return ((...args: Parameters<T>) => {
     const now = Date.now();
     const remaining = ms - (now - lastCall);
     lastArgs = args;
