@@ -98,18 +98,20 @@ export function MemberList({ gigId, isAdmin, onSend }: MemberListProps) {
                     onClick={async () => {
                       const newRole = member.role === 'co-admin' ? 'musician' : 'co-admin';
                       const supabase = createClient();
-                      await supabase
+                      const { error } = await supabase
                         .from('gig_members')
                         .update({ role: newRole })
                         .eq('gig_id', gigId)
                         .eq('user_id', member.id);
-                      onSend?.({
-                        type: 'MEMBER_ROLE',
-                        userId: member.id,
-                        role: newRole,
-                        timestamp: Date.now(),
-                      });
-                      useGigStore.getState().updateMemberRole(member.id, newRole);
+                      if (!error) {
+                        onSend?.({
+                          type: 'MEMBER_ROLE',
+                          userId: member.id,
+                          role: newRole,
+                          timestamp: Date.now(),
+                        });
+                        useGigStore.getState().updateMemberRole(member.id, newRole);
+                      }
                     }}
                   >
                     {member.role === 'co-admin' ? (
