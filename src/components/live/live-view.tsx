@@ -100,6 +100,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
           <Button 
             variant="ghost" 
             size="icon" 
+            aria-label="Toggle band members"
             onClick={() => setShowMembers(!showMembers)}
             className={showMembers ? 'bg-muted' : ''}
           >
@@ -121,7 +122,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
         {/* Members Panel */}
         {showMembers && (
           <div className="hidden lg:block shrink-0">
-            <MemberList gigId={gig.id} />
+            <MemberList gigId={gig.id} isAdmin={isAdmin} onSend={send} />
           </div>
         )}
       </main>

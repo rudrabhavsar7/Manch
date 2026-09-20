@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { LiveView } from '@/components/live/live-view';
 import { Tables } from '@/types/database';
 
@@ -16,8 +16,12 @@ vi.mock('@/components/live/admin-controls', () => ({
 vi.mock('@/components/live/musician-controls', () => ({
   MusicianControls: () => <div data-testid="mock-musician-controls" />
 }));
+const mockMemberListProps = vi.fn();
 vi.mock('@/components/live/member-list', () => ({
-  MemberList: () => <div data-testid="mock-member-list" />
+  MemberList: (props: any) => {
+    mockMemberListProps(props);
+    return <div data-testid="mock-member-list" />;
+  }
 }));
 vi.mock('@/components/gigs/connection-badge', () => ({
   ConnectionBadge: () => <div data-testid="mock-connection-badge" />
@@ -100,5 +104,31 @@ describe('LiveView', () => {
     expect(screen.getByTestId('mock-musician-controls')).toBeInTheDocument();
     expect(screen.queryByTestId('mock-admin-controls')).not.toBeInTheDocument();
     expect(screen.queryByText('PIN: 1234')).not.toBeInTheDocument();
+  });
+
+  it('toggles member list and passes isAdmin and onSend props', () => {
+    render(
+      <LiveView 
+        gig={mockGig} 
+        songs={mockSongs} 
+        songIds={[]} 
+        myRole="admin" 
+        userId="user-1" 
+      />
+    );
+
+    expect(screen.queryByTestId('mock-member-list')).not.toBeInTheDocument();
+
+    const toggleButton = screen.getByRole('button', { name: /toggle band members/i });
+    fireEvent.click(toggleButton);
+
+    expect(screen.getByTestId('mock-member-list')).toBeInTheDocument();
+    expect(mockMemberListProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        gigId: 'gig-1',
+        isAdmin: true,
+        onSend: expect.any(Function),
+      })
+    );
   });
 });

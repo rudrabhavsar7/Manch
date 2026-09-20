@@ -2,13 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { useGigStore } from '@/stores/gig-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { createClient } from '@/lib/supabase/client';
+import { SyncMessage } from '@/lib/sync/message-types';
+import { Shield, ShieldOff } from 'lucide-react';
 
 interface MemberListProps {
   gigId: string;
+  isAdmin?: boolean;
+  onSend?: (msg: SyncMessage) => void;
 }
 
 type UserDetail = {
@@ -17,8 +23,9 @@ type UserDetail = {
   instrument: string;
 };
 
-export function MemberList({ gigId }: MemberListProps) {
+export function MemberList({ gigId, isAdmin, onSend }: MemberListProps) {
   const members = useGigStore((state) => state.members);
+  const user = useAuthStore((state) => state.user);
   const [userDetails, setUserDetails] = useState<Record<string, UserDetail>>({});
   
   useEffect(() => {
@@ -81,6 +88,37 @@ export function MemberList({ gigId }: MemberListProps) {
                     </Badge>
                   </div>
                 </div>
+                {isAdmin && member.id !== user?.id && member.role !== 'admin' && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 ml-auto"
+                    aria-label={member.role === 'co-admin' ? 'Demote to musician' : 'Promote to co-admin'}
+                    title={member.role === 'co-admin' ? 'Demote to musician' : 'Promote to co-admin'}
+                    onClick={async () => {
+                      const newRole = member.role === 'co-admin' ? 'musician' : 'co-admin';
+                      const supabase = createClient();
+                      await supabase
+                        .from('gig_members')
+                        .update({ role: newRole })
+                        .eq('gig_id', gigId)
+                        .eq('user_id', member.id);
+                      onSend?.({
+                        type: 'MEMBER_ROLE',
+                        userId: member.id,
+                        role: newRole,
+                        timestamp: Date.now(),
+                      });
+                      useGigStore.getState().updateMemberRole(member.id, newRole);
+                    }}
+                  >
+                    {member.role === 'co-admin' ? (
+                      <ShieldOff className="h-3 w-3 text-destructive" />
+                    ) : (
+                      <Shield className="h-3 w-3 text-stageAccent" />
+                    )}
+                  </Button>
+                )}
               </div>
             );
           })}
