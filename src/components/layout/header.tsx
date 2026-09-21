@@ -12,6 +12,7 @@ import {
   User,
   Settings,
   LogOut,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -128,6 +129,17 @@ export function Header() {
 
       {/* User Info & Controls */}
       <div className="flex items-center gap-3">
+        <Link
+          href="/songs"
+          className="hidden sm:flex items-center gap-2 px-2.5 py-1 text-xs text-textSecondary bg-elevated/60 hover:bg-elevated hover:text-textPrimary border border-stageBorder rounded-md transition-colors"
+          title="Search songs in library"
+        >
+          <Search className="h-3.5 w-3.5" />
+          <span>Search songs...</span>
+          <kbd className="text-[10px] font-mono bg-surface px-1 py-0.2 rounded border border-stageBorder text-textSecondary">
+            /
+          </kbd>
+        </Link>
         {user && (
           <div className="flex items-center gap-2">
             <span

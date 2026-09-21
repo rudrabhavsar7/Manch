@@ -101,24 +101,24 @@ describe('Song Pages', () => {
   describe('SongsPage (/songs)', () => {
     it('redirects to /auth/login when user is unauthenticated', async () => {
       mockGetUser.mockResolvedValueOnce({ data: { user: null } });
-      await SongsPage();
+      await SongsPage({});
       expect(mockRedirect).toHaveBeenCalledWith('/auth/login');
     });
 
     it('renders song list and New Song button', async () => {
-      const page = await SongsPage();
+      const page = await SongsPage({});
       render(page);
 
       expect(screen.getByRole('heading', { name: /song library/i })).toBeInTheDocument();
       expect(screen.getByText('Time')).toBeInTheDocument();
       expect(screen.getByText('Pink Floyd')).toBeInTheDocument();
-      expect(screen.getByText('F#m')).toBeInTheDocument();
+      expect(screen.getAllByText('F#m').length).toBeGreaterThan(0);
     });
 
     it('renders empty state when user has no songs', async () => {
       mockOrder.mockResolvedValueOnce({ data: [] });
 
-      const page = await SongsPage();
+      const page = await SongsPage({});
       render(page);
 
       expect(screen.getByText(/no songs yet\. create your first song!/i)).toBeInTheDocument();
