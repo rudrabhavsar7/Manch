@@ -218,4 +218,23 @@ describe('MemberList', () => {
       expect(screen.getByText('User anon')).toBeInTheDocument();
     });
   });
+
+  it('loads members from gig_members table when useGigStore.members is initially empty', async () => {
+    useGigStore.setState({
+      members: {},
+    });
+    mockSelectEq.mockResolvedValue({
+      data: sampleUserDetails,
+      error: null,
+    });
+
+    render(<MemberList gigId="gig-123" />);
+
+    await waitFor(() => {
+      expect(screen.getByText('3 connected')).toBeInTheDocument();
+      expect(screen.getByText('Admin Alice')).toBeInTheDocument();
+      expect(screen.getByText('CoAdmin Bob')).toBeInTheDocument();
+      expect(screen.getByText('Musician Charlie')).toBeInTheDocument();
+    });
+  });
 });

@@ -57,6 +57,22 @@ describe('parseChordLine', () => {
       { chord: 'G', lyrics: '' },
     ]);
   });
+
+  it('parses Gujarati Garba lyrics with chords', () => {
+    const result = parseChordLine('[Am]તારા વિના શ્યામ મને [Em]એકલડું લાગે');
+    expect(result.segments).toEqual([
+      { chord: 'Am', lyrics: 'તારા વિના શ્યામ મને ' },
+      { chord: 'Em', lyrics: 'એકલડું લાગે' },
+    ]);
+  });
+
+  it('parses Hindi / Devanagari lyrics with chords', () => {
+    const result = parseChordLine('[D]मन मस्त मगन [Bm]बस तेरा नाम दोहराए');
+    expect(result.segments).toEqual([
+      { chord: 'D', lyrics: 'मन मस्त मगन ' },
+      { chord: 'Bm', lyrics: 'बस तेरा नाम दोहराए' },
+    ]);
+  });
 });
 
 describe('parseSongContent', () => {

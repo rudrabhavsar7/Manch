@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { Inter, JetBrains_Mono, Noto_Sans_Gujarati, Noto_Sans_Devanagari } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils/cn';
 import { AppShell } from '@/components/layout/app-shell';
@@ -12,6 +12,18 @@ const inter = Inter({
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
+});
+
+const notoSansGujarati = Noto_Sans_Gujarati({
+  subsets: ['gujarati'],
+  variable: '--font-gujarati',
+  display: 'swap',
+});
+
+const notoSansDevanagari = Noto_Sans_Devanagari({
+  subsets: ['devanagari'],
+  variable: '--font-devanagari',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -36,6 +48,8 @@ export default function RootLayout({
           inter.className,
           inter.variable,
           jetbrainsMono.variable,
+          notoSansGujarati.variable,
+          notoSansDevanagari.variable,
           'min-h-screen bg-background text-foreground antialiased'
         )}
       >

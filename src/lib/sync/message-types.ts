@@ -5,6 +5,7 @@ export type SyncMessage =
   | { type: 'SCROLL_SYNC'; position: number; percentage: number; timestamp: number }
   | { type: 'SETLIST_UPDATE'; songIds: string[]; timestamp: number }
   | { type: 'MEMBER_ROLE'; userId: string; role: 'co-admin' | 'musician'; timestamp: number }
+  | { type: 'MEMBER_JOIN'; userId: string; role?: 'admin' | 'co-admin' | 'musician'; timestamp: number }
   | { type: 'GIG_STATUS'; status: 'live' | 'paused' | 'ended'; timestamp: number }
   | { type: 'GIG_STATE_REQUEST'; from: string; timestamp: number }
   | { type: 'GIG_STATE_RESPONSE'; activeSongId: string | null; songIds: string[]; status: 'live' | 'paused' | 'ended'; timestamp: number }

@@ -48,4 +48,22 @@ describe('useSync', () => {
 
     expect(useGigStore.getState().activeSongId).toBe('song-2');
   });
+
+  it('updates store members on MEMBER_JOIN message', async () => {
+    const { result } = renderHook(() => useSync());
+    await act(async () => {
+      await result.current.connect('gig-1', 'user-1', false);
+    });
+    
+    act(() => {
+      if ((global as any).triggerMessage) {
+        (global as any).triggerMessage({ type: 'MEMBER_JOIN', userId: 'user-2', role: 'musician', timestamp: 123 });
+      }
+    });
+
+    expect(useGigStore.getState().members['user-2']).toEqual({
+      id: 'user-2',
+      role: 'musician',
+    });
+  });
 });

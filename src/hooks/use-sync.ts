@@ -39,10 +39,20 @@ export function useSync() {
         case 'MEMBER_ROLE':
           updateMemberRole(msg.userId, msg.role);
           break;
+        case 'MEMBER_JOIN':
+          if (msg.userId) {
+            const existingRole = useGigStore.getState().members[msg.userId]?.role;
+            updateMemberRole(msg.userId, msg.role || existingRole || 'musician');
+          }
+          break;
         case 'GIG_STATUS':
           setStatus(msg.status);
           break;
         case 'GIG_STATE_REQUEST':
+          if (msg.from) {
+            const existingRole = useGigStore.getState().members[msg.from]?.role;
+            updateMemberRole(msg.from, existingRole || 'musician');
+          }
           if (isHost) {
             engineRef.current?.send({
               type: 'GIG_STATE_RESPONSE',
@@ -63,6 +73,13 @@ export function useSync() {
     
     await engineRef.current.connect(gigIdToConnect, userId, isHost);
     
+    engineRef.current.send({
+      type: 'MEMBER_JOIN',
+      userId,
+      role: isHost ? 'admin' : (useGigStore.getState().myRole || 'musician'),
+      timestamp: Date.now(),
+    });
+
     if (!isHost) {
       engineRef.current.send({ type: 'GIG_STATE_REQUEST', from: userId, timestamp: Date.now() });
     }

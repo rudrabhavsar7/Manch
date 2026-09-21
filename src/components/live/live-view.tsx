@@ -46,7 +46,8 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
     if (songIds.length > 0 && !activeSongId) {
       setActiveSongId(songIds[0]);
     }
-  }, [gig.id, myRole, songIds, gig.status, setGig, setSongIds, setStatus, setActiveSongId, activeSongId]);
+    useGigStore.getState().updateMemberRole(userId, myRole);
+  }, [gig.id, myRole, songIds, gig.status, userId, setGig, setSongIds, setStatus, setActiveSongId, activeSongId]);
 
   useEffect(() => {
     // Connect to sync

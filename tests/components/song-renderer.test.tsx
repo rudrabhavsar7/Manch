@@ -31,4 +31,22 @@ describe('SongRenderer', () => {
     expect(container.firstElementChild).toHaveStyle({ fontSize: '20px' });
     expect(container.firstElementChild).toHaveClass('custom-test');
   });
+
+  it('renders Gujarati Garba lyrics accurately with chords and transpose', () => {
+    const content = '[Am]તારા વિના શ્યામ મને [G]એકલડું લાગે';
+    render(<SongRenderer content={content} transpose={2} />);
+    expect(screen.getByText('Bm')).toBeInTheDocument();
+    expect(screen.getByText('A')).toBeInTheDocument();
+    expect(screen.getByText('તારા વિના શ્યામ મને')).toBeInTheDocument();
+    expect(screen.getByText('એકલડું લાગે')).toBeInTheDocument();
+  });
+
+  it('renders Hindi / Devanagari lyrics with chords', () => {
+    const content = '[D]मन मस्त मगन [Bm]बस तेरा नाम दोहराए';
+    render(<SongRenderer content={content} transpose={0} />);
+    expect(screen.getByText('D')).toBeInTheDocument();
+    expect(screen.getByText('Bm')).toBeInTheDocument();
+    expect(screen.getByText('मन मस्त मगन')).toBeInTheDocument();
+    expect(screen.getByText('बस तेरा नाम दोहराए')).toBeInTheDocument();
+  });
 });

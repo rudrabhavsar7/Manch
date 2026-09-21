@@ -67,8 +67,10 @@ const config: Config = {
         stageBorder: "var(--color-border)",
       },
       fontFamily: {
-        mono: ["var(--font-mono)", "monospace"],
-        sans: ["var(--font-sans)", "sans-serif"],
+        mono: ["var(--font-mono)", "var(--font-gujarati)", "var(--font-devanagari)", "monospace"],
+        sans: ["var(--font-sans)", "var(--font-gujarati)", "var(--font-devanagari)", "sans-serif"],
+        gujarati: ["var(--font-gujarati)", "sans-serif"],
+        devanagari: ["var(--font-devanagari)", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { useGigStore } from '@/stores/gig-store';
+import { useEffect, useState, useCallback } from 'react';
+import { useGigStore, GigMember } from '@/stores/gig-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { createClient } from '@/lib/supabase/client';
 import { SyncMessage } from '@/lib/sync/message-types';
 import { Shield, ShieldOff } from 'lucide-react';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 interface MemberListProps {
   gigId: string;
@@ -23,33 +24,90 @@ type UserDetail = {
   instrument: string;
 };
 
+type GigMemberRow = {
+  user_id: string;
+  role?: GigMember['role'];
+  users?: UserDetail | UserDetail[] | null;
+};
+
 export function MemberList({ gigId, isAdmin, onSend }: MemberListProps) {
   const members = useGigStore((state) => state.members);
   const user = useAuthStore((state) => state.user);
   const [userDetails, setUserDetails] = useState<Record<string, UserDetail>>({});
-  
+
+  const fetchUsers = useCallback(async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('gig_members')
+      .select('user_id, role, users(id, display_name, instrument)')
+      .eq('gig_id', gigId);
+      
+    if (!error && data) {
+      const detailsMap: Record<string, UserDetail> = {};
+      const existingMembers = useGigStore.getState().members;
+      const membersMap: Record<string, GigMember> = { ...existingMembers };
+
+      (data as unknown as GigMemberRow[]).forEach((item) => {
+        const existingRole = existingMembers[item.user_id]?.role;
+        const role = item.role || existingRole || 'musician';
+        membersMap[item.user_id] = {
+          id: item.user_id,
+          role,
+        };
+        if (item.users) {
+          const u = (Array.isArray(item.users) ? item.users[0] : item.users) as unknown as UserDetail;
+          detailsMap[item.user_id] = u;
+        }
+      });
+      setUserDetails((prev) => ({ ...prev, ...detailsMap }));
+      useGigStore.getState().setMembers(membersMap);
+    }
+  }, [gigId]);
+
   useEffect(() => {
-    const fetchUsers = async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('gig_members')
-        .select('user_id, users(id, display_name, instrument)')
-        .eq('gig_id', gigId);
-        
-      if (!error && data) {
-        const detailsMap: Record<string, UserDetail> = {};
-        data.forEach(item => {
-          if (item.users) {
-            const user = (Array.isArray(item.users) ? item.users[0] : item.users) as unknown as UserDetail;
-            detailsMap[item.user_id] = user;
+    fetchUsers();
+
+    const supabase = createClient();
+    let channel: RealtimeChannel | null = null;
+
+    if (typeof supabase?.channel === 'function') {
+      channel = supabase
+        .channel(`gig-members-${gigId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'gig_members',
+            filter: `gig_id=eq.${gigId}`,
+          },
+          () => {
+            fetchUsers();
           }
-        });
-        setUserDetails(detailsMap);
+        )
+        .subscribe();
+    }
+
+    const pollInterval = setInterval(() => {
+      fetchUsers();
+    }, 5000);
+
+    return () => {
+      clearInterval(pollInterval);
+      if (channel && typeof supabase?.removeChannel === 'function') {
+        supabase.removeChannel(channel);
       }
     };
-    
-    fetchUsers();
-  }, [gigId]);
+  }, [gigId, fetchUsers]);
+
+  // If any member in store is missing userDetails, fetch them
+  useEffect(() => {
+    const memberIds = Object.keys(members);
+    const hasMissing = memberIds.some((id) => !userDetails[id]);
+    if (hasMissing && memberIds.length > 0) {
+      fetchUsers();
+    }
+  }, [members, userDetails, fetchUsers]);
   
   return (
     <div className="flex flex-col h-full bg-surface border-l border-border w-64">

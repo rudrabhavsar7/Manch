@@ -14,7 +14,7 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
-  webServer: {
+  webServer: process.env.PLAYWRIGHT_TEST_BASE_URL ? undefined : {
     command: 'pnpm exec next start -p 3100',
     url: 'http://localhost:3100',
     reuseExistingServer: !process.env.CI,
