@@ -25,6 +25,8 @@ export function isShellHidden(pathname: string | null): boolean {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const theme = useUIStore((s) => s.theme);
+  const user = useAuthStore((s) => s.user);
+  const loading = useAuthStore((s) => s.loading);
 
   // Sync theme with HTML documentElement class
   useEffect(() => {
@@ -47,8 +49,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   const hideShell = isShellHidden(pathname);
+  const isAuthenticated = !!user && !loading;
 
-  if (hideShell) {
+  if (hideShell || !isAuthenticated) {
     return <div className="min-h-screen bg-background">{children}</div>;
   }
 

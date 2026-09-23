@@ -7,17 +7,33 @@ const { mockPathname } = vi.hoisted(() => ({
   mockPathname: vi.fn(),
 }));
 
+const mockRouter = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+}));
+
+const mockAuthStore = vi.hoisted(() => {
+  const signOut = vi.fn();
+  return {
+    user: { id: 'test-user', email: 'test@test.com' },
+    loading: false,
+    signOut,
+  };
+});
+
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname(),
+  useRouter: () => mockRouter,
+}));
+
+vi.mock('@/stores/auth-store', () => ({
+  useAuthStore: vi.fn((selector) => selector(mockAuthStore)),
 }));
 
 describe('AppSidebar component', () => {
-  const mockSignOut = vi.fn();
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockPathname.mockReturnValue('/dashboard');
-    useAuthStore.setState({ signOut: mockSignOut });
   });
 
   it('renders Manch brand heading and all navigation links', () => {
@@ -64,6 +80,6 @@ describe('AppSidebar component', () => {
     expect(signOutBtn).toBeInTheDocument();
 
     fireEvent.click(signOutBtn);
-    expect(mockSignOut).toHaveBeenCalledTimes(1);
+    expect(mockAuthStore.signOut).toHaveBeenCalledTimes(1);
   });
 });

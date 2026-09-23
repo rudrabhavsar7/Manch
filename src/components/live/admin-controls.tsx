@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Square } from 'lucide-react';
 import { useGigStore } from '@/stores/gig-store';
+import { useGigActions } from '@/hooks/use-gig';
 
 import { Button } from '@/components/ui/button';
 import { SyncMessage } from '@/lib/sync/message-types';
@@ -13,6 +14,8 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
   const activeSongId = useGigStore((state) => state.activeSongId);
   const setActiveSongId = useGigStore((state) => state.setActiveSongId);
   const setStatus = useGigStore((state) => state.setStatus);
+  const gigId = useGigStore((state) => state.gigId);
+  const { endGig } = useGigActions();
 
   const currentIndex = activeSongId ? songIds.indexOf(activeSongId) : -1;
   const total = songIds.length;
@@ -36,7 +39,13 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
     }
   };
 
-  const handleEndGig = () => {
+  const handleEndGig = async () => {
+    if (gigId) {
+      const result = await endGig(gigId);
+      if (result.error) {
+        console.error('Failed to end gig in database:', result.error);
+      }
+    }
     setStatus('ended');
     onSend({ type: 'GIG_STATUS', status: 'ended', timestamp: Date.now() });
   };

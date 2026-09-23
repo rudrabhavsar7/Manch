@@ -2,13 +2,38 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { AppShell, isShellHidden } from '@/components/layout/app-shell';
 import { useUIStore } from '@/stores/ui-store';
+import { useAuthStore } from '@/stores/auth-store';
 
 const { mockPathname } = vi.hoisted(() => ({
   mockPathname: vi.fn(),
 }));
 
+const mockAuthStore = vi.hoisted(() => {
+  const getState = vi.fn(() => ({
+    user: { id: 'test-user', email: 'test@test.com' },
+    loading: false,
+    initialize: vi.fn(),
+  }));
+  
+  const hookFn = vi.fn((selector) => selector({
+    user: { id: 'test-user', email: 'test@test.com' },
+    loading: false,
+    initialize: vi.fn(),
+    getState,
+  }));
+  
+  hookFn.getState = getState;
+  
+  return hookFn;
+});
+
 vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname(),
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+
+vi.mock('@/stores/auth-store', () => ({
+  useAuthStore: mockAuthStore,
 }));
 
 describe('isShellHidden helper', () => {
@@ -54,7 +79,8 @@ describe('AppShell component', () => {
 
     expect(screen.getByText('Dashboard Content')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'Manch' }).length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: /songs/i })).toBeInTheDocument();
+    // There are two links matching "songs" (sidebar + header search), check both exist
+    expect(screen.getAllByRole('link', { name: /songs/i }).length).toBe(2);
   });
 
   it('hides sidebar and header on /auth/login', () => {
@@ -93,7 +119,7 @@ describe('AppShell component', () => {
         </AppShell>
       );
 
-      expect(screen.getByRole('link', { name: /songs/i })).toBeInTheDocument();
+      expect(screen.getAllByRole('link', { name: /songs/i }).length).toBe(2);
       unmount();
     }
   });

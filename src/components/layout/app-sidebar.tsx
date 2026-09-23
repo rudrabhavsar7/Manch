@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils/cn';
 import {
   LayoutDashboard,
@@ -26,7 +26,14 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const signOut = useAuthStore((s) => s.signOut);
+
+  async function handleSignOut() {
+    await signOut();
+    router.push('/auth/login');
+    router.refresh();
+  }
 
   return (
     <aside className="hidden md:flex w-56 flex-col border-r border-stageBorder bg-surface h-screen sticky top-0 shrink-0">
@@ -68,7 +75,7 @@ export function AppSidebar() {
           <ThemeToggle />
         </div>
         <button
-          onClick={() => signOut()}
+          onClick={handleSignOut}
           className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-destructive hover:bg-destructive/10 w-full transition-colors"
         >
           <LogOut className="h-4 w-4 shrink-0" />
