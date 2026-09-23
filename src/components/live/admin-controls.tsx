@@ -1,6 +1,7 @@
 import { ChevronLeft, ChevronRight, Square } from 'lucide-react';
 import { useGigStore } from '@/stores/gig-store';
 import { useGigActions } from '@/hooks/use-gig';
+import { usePathname } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { SyncMessage } from '@/lib/sync/message-types';
@@ -14,8 +15,12 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
   const activeSongId = useGigStore((state) => state.activeSongId);
   const setActiveSongId = useGigStore((state) => state.setActiveSongId);
   const setStatus = useGigStore((state) => state.setStatus);
-  const gigId = useGigStore((state) => state.gigId);
+  const gigIdFromStore = useGigStore((state) => state.gigId);
+  const pathname = usePathname();
   const { endGig } = useGigActions();
+
+  // Fallback: extract gigId from URL if not in store
+  const gigId = gigIdFromStore || (pathname?.match(/\/gigs\/([^/]+)/)?.[1] || null);
 
   const currentIndex = activeSongId ? songIds.indexOf(activeSongId) : -1;
   const total = songIds.length;
