@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Square } from 'lucide-react';
 import { useGigStore } from '@/stores/gig-store';
 import { useGigActions } from '@/hooks/use-gig';
 import { usePathname } from 'next/navigation';
+import { useCallback } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { SyncMessage } from '@/lib/sync/message-types';
@@ -28,23 +29,23 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex < total - 1;
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (hasPrev) {
       const prevId = songIds[currentIndex - 1];
       setActiveSongId(prevId);
       onSend({ type: 'SONG_CHANGE', songId: prevId, timestamp: Date.now() });
     }
-  };
+  }, [hasPrev, songIds, currentIndex, setActiveSongId, onSend]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (hasNext) {
       const nextId = songIds[currentIndex + 1];
       setActiveSongId(nextId);
       onSend({ type: 'SONG_CHANGE', songId: nextId, timestamp: Date.now() });
     }
-  };
+  }, [hasNext, songIds, currentIndex, setActiveSongId, onSend]);
 
-  const handleEndGig = async () => {
+  const handleEndGig = useCallback(async () => {
     console.log('handleEndGig called, gigId:', gigId);
     try {
       if (gigId) {
@@ -62,10 +63,10 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
     }
     setStatus('ended');
     onSend({ type: 'GIG_STATUS', status: 'ended', timestamp: Date.now() });
-  };
+  }, [gigId, endGig, setStatus, onSend]);
 
   return (
-    <div className="flex items-center justify-between w-full p-2 h-[56px] bg-surface border-t border-border">
+    <div className="flex items-center justify-between w-full p-2 h-[56px] bg-surface border-t border-border" suppressHydrationWarning>
       <div className="flex items-center space-x-4">
         <Button 
           variant="outline" 
