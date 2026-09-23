@@ -63,7 +63,25 @@ export function JoinGigForm() {
       const { data: gig, error: gigErr } = await query.single();
       if (gigErr || !gig) throw new Error('No active gig found with this PIN');
 
-      // 2. Insert membership first with onConflict so user becomes a member for RLS
+      // 2. Ensure public.users profile exists (FK for gig_members).
+      // Covers users created before the handle_new_user trigger existed.
+      const { error: profileErr } = await supabase.from('users').upsert(
+        {
+          id: user.id,
+          email: user.email ?? '',
+          display_name:
+            (user.user_metadata?.display_name as string | undefined) ||
+            (user.user_metadata?.name as string | undefined) ||
+            user.email?.split('@')[0] ||
+            '',
+        },
+        { onConflict: 'id' },
+      );
+      if (profileErr) {
+        console.error('Failed to ensure user profile:', profileErr);
+      }
+
+      // 3. Insert membership first with onConflict so user becomes a member for RLS
       const { error: memberErr } = await supabase.from('gig_members').upsert(
         {
           gig_id: gig.id,
@@ -75,9 +93,10 @@ export function JoinGigForm() {
 
       if (memberErr) {
         console.error('Failed to join gig member:', memberErr);
+        throw new Error('Failed to join gig. Please try again.');
       }
 
-      // 3. Now query setlist & songs (user is now a member, satisfying is_gig_member() RLS)
+      // 4. Now query setlist & songs (user is now a member, satisfying is_gig_member() RLS)
       if (gig.setlist_id) {
         const { data: setlistData } = await supabase
           .from('setlists')
@@ -103,7 +122,7 @@ export function JoinGigForm() {
         }
       }
 
-      // 4. Redirect to live gig page
+      // 5. Redirect to live gig page
       router.push(`/gigs/${gig.id}`);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Failed to join gig';

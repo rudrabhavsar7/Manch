@@ -50,6 +50,7 @@ const mockGetUser = vi.fn();
 const mockGigsSelect = vi.fn();
 const mockMembersUpsert = vi.fn();
 const mockSetlistsSelect = vi.fn();
+const mockUsersUpsert = vi.fn();
 
 const mockFrom = vi.fn((table: string) => {
   if (table === 'gigs') {
@@ -65,6 +66,11 @@ const mockFrom = vi.fn((table: string) => {
   if (table === 'setlists') {
     return {
       select: mockSetlistsSelect,
+    };
+  }
+  if (table === 'users') {
+    return {
+      upsert: mockUsersUpsert,
     };
   }
   return {};
@@ -160,6 +166,7 @@ describe('JoinGigForm', () => {
     });
 
     mockMembersUpsert.mockResolvedValue({ error: null });
+    mockUsersUpsert.mockResolvedValue({ error: null });
   });
 
   it('renders title, tabs, and PIN form elements', () => {
@@ -240,6 +247,46 @@ describe('JoinGigForm', () => {
     ).toBeInTheDocument();
     expect(mockPush).not.toHaveBeenCalled();
     expect(CacheManager.cacheSongs).not.toHaveBeenCalled();
+  });
+
+  it('ensures public.users profile exists before gig_members insert', async () => {
+    const user = userEvent.setup();
+    render(<JoinGigForm />);
+
+    await user.type(screen.getByLabelText(/4-digit pin/i), '1234');
+    await user.click(screen.getByRole('button', { name: /join gig/i }));
+
+    await waitFor(() => {
+      expect(mockUsersUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'musician-1' }),
+        { onConflict: 'id' },
+      );
+      expect(mockMembersUpsert).toHaveBeenCalled();
+    });
+
+    const usersCallOrder = mockFrom.mock.calls.findIndex(c => c[0] === 'users');
+    const membersCallOrder = mockFrom.mock.calls.findIndex(c => c[0] === 'gig_members');
+    expect(usersCallOrder).toBeLessThan(membersCallOrder);
+  });
+
+  it('shows error and does not redirect when gig_members insert fails', async () => {
+    const user = userEvent.setup();
+    mockMembersUpsert.mockResolvedValue({
+      error: {
+        code: '23503',
+        message: 'insert or update on table "gig_members" violates foreign key constraint',
+      },
+    });
+
+    render(<JoinGigForm />);
+
+    await user.type(screen.getByLabelText(/4-digit pin/i), '1234');
+    await user.click(screen.getByRole('button', { name: /join gig/i }));
+
+    expect(
+      await screen.findByText(/failed to join gig/i),
+    ).toBeInTheDocument();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it('switches to QR tab and starts QR scanner', async () => {
