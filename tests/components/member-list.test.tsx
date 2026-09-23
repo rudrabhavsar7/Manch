@@ -219,6 +219,24 @@ describe('MemberList', () => {
     });
   });
 
+  it('renders close button and calls onClose on click', async () => {
+    const user = userEvent.setup();
+    const mockOnClose = vi.fn();
+
+    render(<MemberList gigId="gig-123" onClose={mockOnClose} />);
+
+    const closeBtn = screen.getByRole('button', { name: /close band members/i });
+    expect(closeBtn).toBeInTheDocument();
+
+    await user.click(closeBtn);
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not render close button when onClose is not provided', () => {
+    render(<MemberList gigId="gig-123" />);
+    expect(screen.queryByRole('button', { name: /close band members/i })).not.toBeInTheDocument();
+  });
+
   it('loads members from gig_members table when useGigStore.members is initially empty', async () => {
     useGigStore.setState({
       members: {},
