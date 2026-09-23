@@ -45,11 +45,19 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
   };
 
   const handleEndGig = async () => {
+    console.log('handleEndGig called, gigId:', gigId);
     if (gigId) {
-      const result = await endGig(gigId);
-      if (result.error) {
-        console.error('Failed to end gig in database:', result.error);
+      try {
+        const result = await endGig(gigId);
+        console.log('endGig result:', result);
+        if (result.error) {
+          console.error('Failed to end gig in database:', result.error);
+        }
+      } catch (err) {
+        console.error('endGig threw:', err);
       }
+    } else {
+      console.warn('No gigId available');
     }
     setStatus('ended');
     onSend({ type: 'GIG_STATUS', status: 'ended', timestamp: Date.now() });
