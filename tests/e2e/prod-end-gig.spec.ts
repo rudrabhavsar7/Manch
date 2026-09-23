@@ -24,30 +24,12 @@ test.describe('Production End Gig Test', () => {
       await page.waitForLoadState('networkidle');
       await page.waitForTimeout(3000);
       
-      const endGigBtn = page.locator('button:has-text("End Gig")');
+      // Use data-testid for precise targeting
+      const endGigBtn = page.locator('[data-testid="admin-end-gig"]');
       const isAdmin = await endGigBtn.isVisible();
       console.log('Is admin:', isAdmin);
       
       if (isAdmin) {
-        // Check gigId in store by evaluating
-        const gigId = await page.evaluate(() => {
-          // @ts-ignore
-          return window.__ZUSTAND_STORES?.gig?.getState?.()?.gigId || 
-                 window.useGigStore?.getState?.()?.gigId ||
-                 'NOT_FOUND';
-        });
-        console.log('gigId from store:', gigId);
-        
-        // Check if endGig function exists
-        const hasEndGig = await page.evaluate(() => {
-          // @ts-ignore
-          return typeof window.endGig === 'function' || 
-                 typeof window.useGigActions?.endGig === 'function' ||
-                 'CHECK_CONSOLE';
-        });
-        console.log('endGig function check:', hasEndGig);
-        
-        // Click with detailed monitoring
         const requests: string[] = [];
         page.on('request', req => {
           if (req.url().includes('supabase') || req.url().includes('gigs') || req.method() !== 'GET') {
@@ -60,8 +42,8 @@ test.describe('Production End Gig Test', () => {
           }
         });
         
-        console.log('About to click End Gig...');
-        await page.click('button:has-text("End Gig")');
+        console.log('About to click End Gig (data-testid)...');
+        await endGigBtn.click();
         console.log('Clicked End Gig');
         
         await page.waitForLoadState('networkidle');
@@ -70,16 +52,10 @@ test.describe('Production End Gig Test', () => {
         console.log('Network requests:');
         requests.forEach(r => console.log('  ', r));
         
-        // Check if page navigated or reloaded
         console.log('Current URL:', page.url());
         
-        // Check button state
         const btnDisabled = await endGigBtn.isDisabled();
         console.log('Button disabled:', btnDisabled);
-        
-        // Check footer content
-        const footerText = await page.locator('footer').textContent();
-        console.log('Footer text:', footerText?.slice(0, 200));
       }
     }
   });
