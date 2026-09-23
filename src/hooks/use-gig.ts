@@ -9,13 +9,24 @@ export function useGigActions() {
   const supabase = useSupabase();
 
   async function endGig(gigId: string): Promise<{ error: Error | null }> {
-    const { error } = await supabase
-      .from('gigs')
-      .update({ status: 'ended', ended_at: new Date().toISOString() })
-      .eq('id', gigId);
+    console.log('endGig called with gigId:', gigId);
+    console.log('Supabase client:', supabase);
+    
+    try {
+      const { error, data } = await supabase
+        .from('gigs')
+        .update({ status: 'ended', ended_at: new Date().toISOString() })
+        .eq('id', gigId)
+        .select();
 
-    if (error) return { error };
-    return { error: null };
+      console.log('Supabase response:', { error, data });
+      
+      if (error) return { error };
+      return { error: null };
+    } catch (err) {
+      console.error('endGig exception:', err);
+      return { error: err as Error };
+    }
   }
 
   async function setGigStatus(gigId: string, status: 'draft' | 'live' | 'ended'): Promise<{ error: Error | null }> {
