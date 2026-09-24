@@ -45,7 +45,8 @@ next-env.d.ts
 scratch_*
 *.log
 *.bat
-scripts/
+scripts/*
+!scripts/load-test*
 
 
 .env*
