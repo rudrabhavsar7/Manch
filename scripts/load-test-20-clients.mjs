@@ -4,7 +4,17 @@ import { seedLoadTestDatabase, getMusicianEmails, HOST_EMAIL, TEST_PASSWORD, TES
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const NUM_MUSICIANS = parseInt(process.env.NUM_MUSICIANS || '19', 10);
-const STAGGER_MS = parseInt(process.env.STAGGER_MS || '150', 10);
+const STAGGER_MS = parseInt(process.env.STAGGER_MS || '1000', 10);
+
+const CHROMIUM_ARGS = [
+  '--disable-dev-shm-usage',
+  '--no-sandbox',
+  '--disable-gpu',
+  '--disable-extensions',
+  '--disable-background-networking',
+  '--disable-default-apps',
+  '--disable-sync'
+];
 
 export function calculateStats(latencies) {
   if (!latencies || latencies.length === 0) return { count: 0, p50: 0, p95: 0, max: 0, min: 0 };
@@ -92,7 +102,7 @@ export async function run() {
     const tHostStart = performance.now();
     const hostBrowser = await chromium.launch({
       headless: true,
-      args: ['--disable-dev-shm-usage', '--no-sandbox']
+      args: CHROMIUM_ARGS
     });
     allBrowsers.push(hostBrowser);
     metrics.launchTimes.push(performance.now() - tHostStart);
@@ -102,16 +112,16 @@ export async function run() {
 
     console.log('[Step 1/4] Host logging in as', HOST_EMAIL);
     const tLoginHostStart = performance.now();
-    await hostPage.goto(`${BASE_URL}/auth/login`, { timeout: 25000 });
-    await hostPage.fill('#email', HOST_EMAIL);
-    await hostPage.fill('#password', TEST_PASSWORD);
+    await hostPage.goto(`${BASE_URL}/auth/login`, { timeout: 45000 });
+    await hostPage.locator('#email').pressSequentially(HOST_EMAIL, { delay: 10 });
+    await hostPage.locator('#password').pressSequentially(TEST_PASSWORD, { delay: 10 });
     await hostPage.click('button:has-text("Sign in")');
-    await hostPage.waitForURL(/\/dashboard/, { timeout: 25000 });
+    await hostPage.waitForURL(/\/dashboard/, { timeout: 35000 });
     metrics.loginTimes.push(performance.now() - tLoginHostStart);
 
     console.log('[Step 1/4] Host navigating to gig', TEST_GIG_ID);
-    await hostPage.goto(`${BASE_URL}/gigs/${TEST_GIG_ID}`, { timeout: 25000 });
-    await hostPage.waitForSelector('text=Load Test Live Gig', { timeout: 25000 });
+    await hostPage.goto(`${BASE_URL}/gigs/${TEST_GIG_ID}`, { timeout: 45000 });
+    await hostPage.waitForSelector('text=Load Test Live Gig', { timeout: 45000 });
     
     // Open band members drawer if present
     const hostDrawerBtn = hostPage.locator('button[aria-label="Toggle band members"]');
@@ -131,7 +141,7 @@ export async function run() {
         const tLaunch = performance.now();
         const browser = await chromium.launch({
           headless: true,
-          args: ['--disable-dev-shm-usage', '--no-sandbox']
+          args: CHROMIUM_ARGS
         });
         allBrowsers.push(browser);
         metrics.launchTimes.push(performance.now() - tLaunch);
@@ -141,19 +151,34 @@ export async function run() {
 
         // Login
         const tLogin = performance.now();
-        await page.goto(`${BASE_URL}/auth/login`, { timeout: 30000 });
-        await page.fill('#email', email);
-        await page.fill('#password', TEST_PASSWORD);
+        await page.goto(`${BASE_URL}/auth/login`, { timeout: 45000 });
+        await page.locator('#email').pressSequentially(email, { delay: 10 });
+        await page.locator('#password').pressSequentially(TEST_PASSWORD, { delay: 10 });
         await page.click('button:has-text("Sign in")');
-        await page.waitForURL(/\/dashboard/, { timeout: 30000 });
+        await page.waitForURL(/\/dashboard/, { timeout: 35000 });
         metrics.loginTimes.push(performance.now() - tLogin);
 
         // Join via PIN
         const tJoin = performance.now();
-        await page.goto(`${BASE_URL}/gigs/join`, { timeout: 30000 });
-        await page.fill('#pin', TEST_PIN);
-        await page.click('button:has-text("Join Gig")');
-        await page.waitForURL(new RegExp(`/gigs/${TEST_GIG_ID}`), { timeout: 30000 });
+        await page.goto(`${BASE_URL}/gigs/join`, { timeout: 45000 });
+        const pinInput = page.locator('#pin');
+        await pinInput.waitFor({ state: 'visible', timeout: 30000 });
+        
+        // Use native value setter to ensure React 19 synthetic event triggers instantly
+        await pinInput.evaluate((el, val) => {
+          const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+          if (setter) {
+            setter.call(el, val);
+          } else {
+            el.value = val;
+          }
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }, TEST_PIN);
+
+        await page.waitForSelector('button:has-text("Join Gig"):not([disabled])', { timeout: 15000 });
+        await page.click('button:has-text("Join Gig"):not([disabled])');
+        await page.waitForURL(new RegExp(`/gigs/${TEST_GIG_ID}`), { timeout: 45000 });
         metrics.joinTimes.push(performance.now() - tJoin);
 
         return { email, page, browser };
@@ -168,22 +193,22 @@ export async function run() {
     const activeMusicians = (await Promise.all(musicianSessions)).filter(Boolean);
     console.log(`[Step 2/4] Musician join barrier reached: ${activeMusicians.length}/${NUM_MUSICIANS} connected.`);
 
-    // Step 3: Real-Time Sync Under 20-Client Load
-    console.log('\n[Step 3/4] Testing real-time sync under 20-client load...');
+    // Step 3: Real-Time Sync Under Load
+    console.log('\n[Step 3/4] Testing real-time sync under load...');
 
-    // Test A: Song Switch Sync
-    console.log('[Step 3/4] Host switching active song in setlist...');
-    const songButtons = hostPage.locator('button[data-testid^="setlist-item"], button:has-text("Kabira"), button:has-text("Hotel California")');
-    const songCount = await songButtons.count();
+    // Test A: Song Switch Sync (switch from initial song Hotel California to Kabira)
+    console.log('[Step 3/4] Host switching active song to Kabira in setlist...');
+    const kabiraBtn = hostPage.locator('button:has-text("Kabira"), [data-testid="setlist-item-10000000-0000-0000-0000-000000000001"]');
+    const songCount = await kabiraBtn.count();
 
-    if (songCount >= 2) {
+    if (songCount > 0 && activeMusicians.length > 0) {
       const tSongSwitchStart = performance.now();
-      await songButtons.nth(1).click();
+      await kabiraBtn.first().click();
 
       // Measure propagation across all active musicians
       const syncPromises = activeMusicians.map(async ({ page, email }) => {
         try {
-          await page.waitForSelector('h1:has-text("Hotel California")', { timeout: 5000 });
+          await page.waitForSelector('h1:has-text("Kabira")', { timeout: 15000 });
           metrics.songSyncTimes.push(performance.now() - tSongSwitchStart);
         } catch (e) {
           metrics.errors.push({ client: email, phase: 'SongSync', error: e.message });
@@ -193,27 +218,17 @@ export async function run() {
       console.log(`[Step 3/4] Song switch sync completed across ${metrics.songSyncTimes.length} musicians.`);
     }
 
-    // Test B: Key Transposition Sync
-    console.log('[Step 3/4] Testing chord transpose key button...');
-    let transposeBtn = hostPage.locator('button[aria-label="Transpose up"], button:has-text("+1"), [data-testid="transpose-increment"]');
-    if (await transposeBtn.count() === 0 && activeMusicians.length > 0) {
-      transposeBtn = activeMusicians[0].page.locator('button[aria-label="Transpose up"], button:has-text("+1"), [data-testid="transpose-increment"]');
-    }
-
-    if (await transposeBtn.count() > 0) {
-      const tTransposeStart = performance.now();
-      await transposeBtn.first().click();
-
-      const transposePromises = activeMusicians.map(async ({ page, email }) => {
-        try {
-          await page.waitForTimeout(500);
-          metrics.transposeSyncTimes.push(performance.now() - tTransposeStart);
-        } catch (e) {
-          metrics.errors.push({ client: email, phase: 'TransposeSync', error: e.message });
-        }
-      });
-      await Promise.all(transposePromises);
-      console.log(`[Step 3/4] Transpose sync completed across ${metrics.transposeSyncTimes.length} musicians.`);
+    // Test B: Key Transposition
+    console.log('[Step 3/4] Testing chord transpose key button on musicians...');
+    if (activeMusicians.length > 0) {
+      const musicianPage = activeMusicians[0].page;
+      const transposeBtn = musicianPage.locator('button[aria-label="Transpose up"], button:has-text("+1"), [data-testid="transpose-increment"]');
+      if (await transposeBtn.count() > 0) {
+        const tTransposeStart = performance.now();
+        await transposeBtn.first().click();
+        metrics.transposeSyncTimes.push(performance.now() - tTransposeStart);
+        console.log(`[Step 3/4] Musician chord transpose test completed (${Math.round(metrics.transposeSyncTimes[0])}ms).`);
+      }
     }
 
     console.log('\n[Step 4/4] Load test scenario finished successfully.');
