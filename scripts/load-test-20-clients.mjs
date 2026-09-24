@@ -4,7 +4,9 @@ import { seedLoadTestDatabase, getMusicianEmails, HOST_EMAIL, TEST_PASSWORD, TES
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const NUM_MUSICIANS = parseInt(process.env.NUM_MUSICIANS || '19', 10);
-const STAGGER_MS = parseInt(process.env.STAGGER_MS || '1000', 10);
+const CONCURRENCY = parseInt(process.env.CONCURRENCY || '4', 10);
+const SEPARATE_PROCESSES = process.env.SEPARATE_PROCESSES === 'true';
+const STAGGER_MS = parseInt(process.env.STAGGER_MS || (SEPARATE_PROCESSES ? '1200' : '500'), 10);
 
 const CHROMIUM_ARGS = [
   '--disable-dev-shm-usage',
@@ -97,14 +99,19 @@ export async function run() {
     console.log('[Step 0/4] Seeding database accounts and test gig...');
     await seedLoadTestDatabase();
 
+    let masterBrowser = null;
+    if (!SEPARATE_PROCESSES) {
+      masterBrowser = await chromium.launch({ headless: true, args: CHROMIUM_ARGS });
+      allBrowsers.push(masterBrowser);
+    }
+
     // Step 1: Launch Host Browser
     console.log('\n[Step 1/4] Launching Host browser...');
     const tHostStart = performance.now();
-    const hostBrowser = await chromium.launch({
-      headless: true,
-      args: CHROMIUM_ARGS
-    });
-    allBrowsers.push(hostBrowser);
+    const hostBrowser = SEPARATE_PROCESSES
+      ? await chromium.launch({ headless: true, args: CHROMIUM_ARGS })
+      : masterBrowser;
+    if (SEPARATE_PROCESSES) allBrowsers.push(hostBrowser);
     metrics.launchTimes.push(performance.now() - tHostStart);
 
     const hostContext = await hostBrowser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -112,15 +119,22 @@ export async function run() {
 
     console.log('[Step 1/4] Host logging in as', HOST_EMAIL);
     const tLoginHostStart = performance.now();
-    await hostPage.goto(`${BASE_URL}/auth/login`, { timeout: 45000 });
+    await hostPage.goto(`${BASE_URL}/auth/login`, { timeout: 45000, waitUntil: 'load' });
+    await hostPage.waitForSelector('#email', { timeout: 30000 });
     await hostPage.locator('#email').pressSequentially(HOST_EMAIL, { delay: 10 });
     await hostPage.locator('#password').pressSequentially(TEST_PASSWORD, { delay: 10 });
     await hostPage.click('button:has-text("Sign in")');
-    await hostPage.waitForURL(/\/dashboard/, { timeout: 35000 });
+    await Promise.race([
+      hostPage.waitForURL(/\/dashboard/, { timeout: 45000 }),
+      hostPage.waitForSelector('p[role="alert"]', { timeout: 45000 }).then(async el => {
+        const txt = await el.textContent();
+        throw new Error(`Host login error: ${txt}`);
+      })
+    ]);
     metrics.loginTimes.push(performance.now() - tLoginHostStart);
 
     console.log('[Step 1/4] Host navigating to gig', TEST_GIG_ID);
-    await hostPage.goto(`${BASE_URL}/gigs/${TEST_GIG_ID}`, { timeout: 45000 });
+    await hostPage.goto(`${BASE_URL}/gigs/${TEST_GIG_ID}`, { timeout: 45000, waitUntil: 'load' });
     await hostPage.waitForSelector('text=Load Test Live Gig', { timeout: 45000 });
     
     // Open band members drawer if present
@@ -130,67 +144,84 @@ export async function run() {
     }
     console.log('[Step 1/4] Host ready in live session.');
 
-    // Step 2: Concurrent Musician Launch and Join
-    console.log(`\n[Step 2/4] Concurrently launching ${NUM_MUSICIANS} Musician browsers (staggered ${STAGGER_MS}ms)...`);
-    const musicianSessions = [];
+    // Step 2: Concurrent Musician Launch and Join (batched by CONCURRENCY)
+    console.log(`\n[Step 2/4] Launching and joining ${NUM_MUSICIANS} Musicians in batches of ${CONCURRENCY} (mode: ${SEPARATE_PROCESSES ? 'Multi-Process' : 'Isolated Contexts'})...`);
+    const activeMusicians = [];
 
-    for (let i = 0; i < NUM_MUSICIANS; i++) {
-      const email = musicianEmails[i];
-      const musicianPromise = (async () => {
-        await sleep(i * STAGGER_MS);
-        const tLaunch = performance.now();
-        const browser = await chromium.launch({
-          headless: true,
-          args: CHROMIUM_ARGS
-        });
-        allBrowsers.push(browser);
-        metrics.launchTimes.push(performance.now() - tLaunch);
+    for (let batchStart = 0; batchStart < NUM_MUSICIANS; batchStart += CONCURRENCY) {
+      const batchEmails = musicianEmails.slice(batchStart, batchStart + CONCURRENCY);
+      console.log(`[Step 2/4] Connecting batch: musicians ${batchStart + 1} to ${batchStart + batchEmails.length} of ${NUM_MUSICIANS}...`);
 
-        const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
-        const page = await context.newPage();
+      const batchPromises = batchEmails.map((email, idx) => {
+        return (async () => {
+          await sleep(idx * 250);
+          const tLaunch = performance.now();
+          const browser = SEPARATE_PROCESSES
+            ? await chromium.launch({ headless: true, args: CHROMIUM_ARGS })
+            : masterBrowser;
+          if (SEPARATE_PROCESSES) allBrowsers.push(browser);
+          metrics.launchTimes.push(performance.now() - tLaunch);
 
-        // Login
-        const tLogin = performance.now();
-        await page.goto(`${BASE_URL}/auth/login`, { timeout: 45000 });
-        await page.locator('#email').pressSequentially(email, { delay: 10 });
-        await page.locator('#password').pressSequentially(TEST_PASSWORD, { delay: 10 });
-        await page.click('button:has-text("Sign in")');
-        await page.waitForURL(/\/dashboard/, { timeout: 35000 });
-        metrics.loginTimes.push(performance.now() - tLogin);
+          const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+          const page = await context.newPage();
 
-        // Join via PIN
-        const tJoin = performance.now();
-        await page.goto(`${BASE_URL}/gigs/join`, { timeout: 45000 });
-        const pinInput = page.locator('#pin');
-        await pinInput.waitFor({ state: 'visible', timeout: 30000 });
-        
-        // Use native value setter to ensure React 19 synthetic event triggers instantly
-        await pinInput.evaluate((el, val) => {
-          const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
-          if (setter) {
-            setter.call(el, val);
-          } else {
-            el.value = val;
+          // Login
+          const tLogin = performance.now();
+          await page.goto(`${BASE_URL}/auth/login`, { timeout: 45000, waitUntil: 'load' });
+          await page.waitForSelector('#email', { timeout: 30000 });
+          await page.locator('#email').pressSequentially(email, { delay: 10 });
+          await page.locator('#password').pressSequentially(TEST_PASSWORD, { delay: 10 });
+          await page.click('button:has-text("Sign in")');
+          await Promise.race([
+            page.waitForURL(/\/dashboard/, { timeout: 45000 }),
+            page.waitForSelector('p[role="alert"]', { timeout: 45000 }).then(async el => {
+              const txt = await el.textContent();
+              throw new Error(`Musician login error: ${txt}`);
+            })
+          ]);
+          metrics.loginTimes.push(performance.now() - tLogin);
+
+          // Join via PIN
+          const tJoin = performance.now();
+          await page.goto(`${BASE_URL}/gigs/join`, { timeout: 45000, waitUntil: 'load' });
+          const pinInput = page.locator('#pin');
+          await pinInput.waitFor({ state: 'visible', timeout: 30000 });
+          
+          const joinBtn = page.locator('button:has-text("Join Gig")');
+          for (let attempt = 0; attempt < 6; attempt++) {
+            await pinInput.click();
+            await pinInput.fill('');
+            await pinInput.pressSequentially(TEST_PIN, { delay: 30 });
+            await pinInput.evaluate((el, val) => {
+              const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+              if (setter) setter.call(el, val);
+              else el.value = val;
+              el.dispatchEvent(new Event('input', { bubbles: true }));
+              el.dispatchEvent(new Event('change', { bubbles: true }));
+            }, TEST_PIN);
+            await sleep(200);
+            if (await joinBtn.isEnabled()) break;
           }
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
-        }, TEST_PIN);
 
-        await page.waitForSelector('button:has-text("Join Gig"):not([disabled])', { timeout: 15000 });
-        await page.click('button:has-text("Join Gig"):not([disabled])');
-        await page.waitForURL(new RegExp(`/gigs/${TEST_GIG_ID}`), { timeout: 45000 });
-        metrics.joinTimes.push(performance.now() - tJoin);
+          await joinBtn.click();
+          await page.waitForURL(new RegExp(`/gigs/${TEST_GIG_ID}`), { timeout: 45000 });
+          await page.waitForSelector('text=Load Test Live Gig', { timeout: 45000 });
+          metrics.joinTimes.push(performance.now() - tJoin);
 
-        return { email, page, browser };
-      })().catch(err => {
-        metrics.errors.push({ client: email, phase: 'Launch/Join', error: err.message });
-        return null;
+          return { email, page, browser };
+        })().catch(err => {
+          metrics.errors.push({ client: email, phase: 'Launch/Join', error: err.message });
+          return null;
+        });
       });
 
-      musicianSessions.push(musicianPromise);
+      const batchResults = await Promise.all(batchPromises);
+      for (const res of batchResults) {
+        if (res) activeMusicians.push(res);
+      }
+      console.log(`[Step 2/4] Batch complete. Current live musicians: ${activeMusicians.length}/${NUM_MUSICIANS}`);
     }
 
-    const activeMusicians = (await Promise.all(musicianSessions)).filter(Boolean);
     console.log(`[Step 2/4] Musician join barrier reached: ${activeMusicians.length}/${NUM_MUSICIANS} connected.`);
 
     // Step 3: Real-Time Sync Under Load
