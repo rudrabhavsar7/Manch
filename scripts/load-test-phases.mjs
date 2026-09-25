@@ -14,8 +14,8 @@ const pct = (arr, p) => {
 };
 
 const phases = {
-  loginGoto: [], loginSubmit: [],
-  joinGoto: [], joinPinReady: [], joinSubmit: [],
+  loginGoto: [], loginSubmit: [], loginToken: [], loginNav: [],
+  joinGoto: [], joinPinReady: [], joinSubmit: [], joinForm: [], gigSsr: [],
 };
 
 async function login(page, email) {
@@ -28,11 +28,16 @@ async function login(page, email) {
   await page.locator('#email').pressSequentially(email, { delay: 10 });
   await page.locator('#password').pressSequentially(TEST_PASSWORD, { delay: 10 });
   const t2 = performance.now();
+  const tokenP = page.waitForResponse(r => r.url().includes('/auth/v1/token'), { timeout: 45000 });
   await page.click('button:has-text("Sign in")');
+  await tokenP;
+  const tTok = performance.now();
   await page.waitForURL(/\/dashboard/, { timeout: 45000 });
   const t3 = performance.now();
   phases.loginSubmit.push(t3 - t2);
-  console.log(`  login ${email}: pageLoad=${Math.round(t1 - t0)}ms submit=${Math.round(t3 - t2)}ms`);
+  phases.loginToken.push(tTok - t2);
+  phases.loginNav.push(t3 - tTok);
+  console.log(`  login ${email}: pageLoad=${Math.round(t1 - t0)}ms submit=${Math.round(t3 - t2)}ms (token=${Math.round(tTok - t2)}ms nav=${Math.round(t3 - tTok)}ms)`);
 }
 
 async function join(page) {
@@ -58,10 +63,13 @@ async function join(page) {
 
   await joinBtn.click();
   await page.waitForURL(new RegExp(`/gigs/${TEST_GIG_ID}`), { timeout: 45000 });
+  const tUrl = performance.now();
   await page.waitForSelector('text=Load Test Live Gig', { timeout: 45000 });
   const t3 = performance.now();
   phases.joinSubmit.push(t3 - t2);
-  console.log(`  join: pageLoad=${Math.round(t1 - t0)}ms pinReady=${Math.round(t2 - t1)}ms(attempts=${attempts}) submit=${Math.round(t3 - t2)}ms`);
+  phases.joinForm.push(tUrl - t2);
+  phases.gigSsr.push(t3 - tUrl);
+  console.log(`  join: pageLoad=${Math.round(t1 - t0)}ms pinReady=${Math.round(t2 - t1)}ms(attempts=${attempts}) submit=${Math.round(t3 - t2)}ms (form=${Math.round(tUrl - t2)}ms ssr=${Math.round(t3 - tUrl)}ms)`);
 }
 
 (async () => {

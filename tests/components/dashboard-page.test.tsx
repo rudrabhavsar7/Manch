@@ -5,6 +5,7 @@ import DashboardPage from '@/app/dashboard/page';
 const {
   mockRedirect,
   mockGetUser,
+  mockGetClaims,
   mockSongsEq,
   mockSetlistsEq,
   mockMembersEq,
@@ -12,6 +13,7 @@ const {
 } = vi.hoisted(() => {
   const mockRedirect = vi.fn();
   const mockGetUser = vi.fn();
+  const mockGetClaims = vi.fn();
   const mockSongsEq = vi.fn();
   const mockSetlistsEq = vi.fn();
   const mockMembersEq = vi.fn();
@@ -48,6 +50,7 @@ const {
   return {
     mockRedirect,
     mockGetUser,
+    mockGetClaims,
     mockSongsEq,
     mockSetlistsEq,
     mockMembersEq,
@@ -65,6 +68,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn().mockResolvedValue({
     auth: {
       getUser: mockGetUser,
+      getClaims: mockGetClaims,
     },
     from: mockServerFrom,
   }),
@@ -75,6 +79,10 @@ describe('DashboardPage (/dashboard)', () => {
     vi.clearAllMocks();
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-123' } },
+    });
+    mockGetClaims.mockResolvedValue({
+      data: { claims: { sub: 'user-123' } },
+      error: null,
     });
     mockSongsEq.mockResolvedValue({ count: 15, data: null });
     mockSetlistsEq.mockResolvedValue({ count: 4, data: null });
@@ -93,7 +101,7 @@ describe('DashboardPage (/dashboard)', () => {
   });
 
   it('redirects to /auth/login when user is unauthenticated', async () => {
-    mockGetUser.mockResolvedValueOnce({ data: { user: null } });
+    mockGetClaims.mockResolvedValueOnce({ data: { claims: null }, error: null });
     await DashboardPage();
     expect(mockRedirect).toHaveBeenCalledWith('/auth/login');
   });

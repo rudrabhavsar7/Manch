@@ -18,28 +18,27 @@ interface GigMemberWithGig {
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
 
-  if (!user) {
+  if (!data?.claims) {
     redirect('/auth/login');
     return null;
   }
+  const userId = data.claims.sub;
 
   const [songCountResult, setlistCountResult, activeGigsResult] = await Promise.all([
     supabase
       .from('songs')
       .select('id', { count: 'exact', head: true })
-      .eq('owner_id', user.id),
+      .eq('owner_id', userId),
     supabase
       .from('setlists')
       .select('id', { count: 'exact', head: true })
-      .eq('owner_id', user.id),
+      .eq('owner_id', userId),
     supabase
       .from('gig_members')
       .select('gig_id, gigs(name, status, pin)')
-      .eq('user_id', user.id),
+      .eq('user_id', userId),
   ]);
 
   const songCount = songCountResult.count ?? 0;

@@ -13,16 +13,14 @@ export default async function GigPage({ params }: GigPageProps) {
   const supabase = await createClient();
 
   // Wave 1: auth check and gig fetch are independent — run in parallel.
-  const [gigResult, userResult] = await Promise.all([
+  const [gigResult, claimsResult] = await Promise.all([
     supabase.from('gigs').select('*').eq('id', gigId).single(),
-    supabase.auth.getUser(),
+    supabase.auth.getClaims(),
   ]);
 
-  const {
-    data: { user },
-  } = userResult;
+  const claims = claimsResult.data?.claims;
 
-  if (!user) {
+  if (!claims) {
     redirect('/auth/login');
   }
 
@@ -38,7 +36,7 @@ export default async function GigPage({ params }: GigPageProps) {
       .from('gig_members')
       .select('role')
       .eq('gig_id', gigId)
-      .eq('user_id', user.id)
+      .eq('user_id', claims.sub)
       .single(),
     supabase
       .from('setlist_songs')
@@ -71,7 +69,7 @@ export default async function GigPage({ params }: GigPageProps) {
       songs={songs} 
       songIds={songIds} 
       myRole={member.role} 
-      userId={user.id} 
+      userId={claims.sub} 
     />
   );
 }
