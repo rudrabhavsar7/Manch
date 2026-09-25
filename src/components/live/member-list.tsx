@@ -60,8 +60,20 @@ export function MemberList({ gigId, isAdmin, onSend, onClose }: MemberListProps)
           detailsMap[item.user_id] = u;
         }
       });
-      setUserDetails((prev) => ({ ...prev, ...detailsMap }));
-      useGigStore.getState().setMembers(membersMap);
+
+      if (Object.keys(detailsMap).length > 0) {
+        setUserDetails((prev) => ({ ...prev, ...detailsMap }));
+      }
+
+      const membershipChanged =
+        Object.keys(membersMap).length !== Object.keys(existingMembers).length ||
+        Object.keys(membersMap).some(
+          (id) =>
+            !existingMembers[id] || existingMembers[id].role !== membersMap[id].role,
+        );
+      if (membershipChanged) {
+        useGigStore.getState().setMembers(membersMap);
+      }
     }
   }, [gigId]);
 

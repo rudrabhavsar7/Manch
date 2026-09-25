@@ -25,12 +25,28 @@ const mockInsert = vi.fn();
 const mockUpdate = vi.fn();
 const mockDelete = vi.fn();
 const mockEq = vi.fn();
+const mockSelectEqOrder = vi.fn();
+const mockSelectEq = vi.fn(() => ({ order: mockSelectEqOrder }));
+const mockSelect = vi.fn(() => ({ eq: mockSelectEq }));
+const mockStorageUpload = vi.fn();
+const mockStorageRemove = vi.fn();
+const mockStorageSignedUrl = vi.fn();
 
-const mockFrom = vi.fn((table: string) => ({
-  insert: mockInsert,
-  update: mockUpdate,
-  delete: mockDelete,
-}));
+const mockFrom = vi.fn((table: string) => {
+  if (table === 'song_photos') {
+    return {
+      insert: mockInsert,
+      update: mockUpdate,
+      delete: mockDelete,
+      select: mockSelect,
+    };
+  }
+  return {
+    insert: mockInsert,
+    update: mockUpdate,
+    delete: mockDelete,
+  };
+});
 
 vi.mock('@/hooks/use-supabase', () => ({
   useSupabase: () => ({
@@ -38,6 +54,13 @@ vi.mock('@/hooks/use-supabase', () => ({
       getUser: mockGetUser,
     },
     from: mockFrom,
+    storage: {
+      from: vi.fn(() => ({
+        upload: mockStorageUpload,
+        remove: mockStorageRemove,
+        createSignedUrl: mockStorageSignedUrl,
+      })),
+    },
   }),
 }));
 
@@ -60,10 +83,18 @@ describe('SongEditor', () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: 'user-1', email: 'musician@band.com' } },
     });
-    mockInsert.mockResolvedValue({ error: null });
+    mockInsert.mockImplementation(() => ({
+      select: () => ({
+        single: async () => ({ data: { id: 'new-song-id' }, error: null }),
+      }),
+    }));
     mockUpdate.mockReturnValue({ eq: mockEq });
     mockDelete.mockReturnValue({ eq: mockEq });
     mockEq.mockResolvedValue({ error: null });
+    mockSelectEqOrder.mockResolvedValue({ data: [], error: null });
+    mockStorageUpload.mockResolvedValue({ data: { path: 'uploaded' }, error: null });
+    mockStorageRemove.mockResolvedValue({ data: null, error: null });
+    mockStorageSignedUrl.mockResolvedValue({ data: { signedUrl: 'https://signed.example/x.jpg' }, error: null });
   });
 
   it('renders form elements for creating a new song', () => {
@@ -202,10 +233,17 @@ describe('SongEditor', () => {
 
   it('displays error message when database save fails', async () => {
     const user = userEvent.setup();
-    mockInsert.mockResolvedValueOnce({ error: { message: 'Database connection error' } });
+    mockInsert.mockImplementationOnce(() => ({
+      select: () => ({
+        single: async () => ({ data: null, error: { message: 'Database connection error' } }),
+      }),
+    }));
 
     render(<SongEditor />);
     await user.type(screen.getByLabelText(/title/i), 'Echoes');
+    fireEvent.change(screen.getByLabelText(/lyrics/i), {
+      target: { value: '[C]Hello' },
+    });
 
     const saveButton = screen.getByRole('button', { name: /save song/i });
     await user.click(saveButton);
@@ -222,5 +260,73 @@ describe('SongEditor', () => {
     await user.click(cancelButton);
 
     expect(mockPush).toHaveBeenCalledWith('/songs');
+  });
+
+  it('shows error when neither lyrics nor photos provided', async () => {
+    const user = userEvent.setup();
+    render(<SongEditor />);
+
+    await user.type(screen.getByLabelText(/^title/i), 'No Content Song');
+
+    await user.click(screen.getByRole('button', { name: /save song/i }));
+
+    expect(
+      await screen.findByText(/add lyrics or at least one photo/i),
+    ).toBeInTheDocument();
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('renders photo uploader section', () => {
+    render(<SongEditor />);
+    expect(screen.getByText('Photos')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add photos/i })).toBeInTheDocument();
+  });
+
+  it('saves song with pending photo: uploads to storage and inserts song_photos row', async () => {
+    const user = userEvent.setup();
+
+    render(<SongEditor />);
+    await user.type(screen.getByLabelText(/^title/i), 'Photo Song');
+
+    const file = new File(['img'], 'page1.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByTestId('photo-file-input'), {
+      target: { files: [file] },
+    });
+
+    await user.click(screen.getByRole('button', { name: /save song/i }));
+
+    await waitFor(() => {
+      expect(mockStorageUpload).toHaveBeenCalledWith(
+        expect.stringContaining('new-song-id'),
+        file,
+        expect.anything(),
+      );
+      expect(mockInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          song_id: 'new-song-id',
+          position: 0,
+        }),
+      );
+      expect(mockPush).toHaveBeenCalledWith('/songs');
+    });
+  }, 15000);
+
+  it('loads existing photos when editing a song', async () => {
+    mockSelectEqOrder.mockResolvedValue({
+      data: [
+        { id: 'ph-1', song_id: 'song-123', storage_path: 'user-1/song-123/a.jpg', position: 0 },
+      ],
+      error: null,
+    });
+
+    render(<SongEditor song={sampleSong} />);
+
+    await waitFor(() => {
+      expect(mockFrom).toHaveBeenCalledWith('song_photos');
+      expect(mockSelectEq).toHaveBeenCalledWith('song_id', 'song-123');
+    });
+
+    expect(await screen.findByAltText(/photo page 1/i)).toBeInTheDocument();
   });
 });

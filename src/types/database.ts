@@ -345,6 +345,38 @@ export interface Database {
           },
         ];
       };
+      song_photos: {
+        Row: {
+          id: string;
+          song_id: string;
+          storage_path: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          song_id: string;
+          storage_path: string;
+          position?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          song_id?: string;
+          storage_path?: string;
+          position?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'song_photos_song_id_fkey';
+            columns: ['song_id'];
+            isOneToOne: false;
+            referencedRelation: 'songs';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

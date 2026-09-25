@@ -10,6 +10,7 @@ import { SongDisplay } from './song-display';
 import { AdminControls } from './admin-controls';
 import { MusicianControls } from './musician-controls';
 import { MemberList } from './member-list';
+import { useSongPhotos } from '@/hooks/use-song-photos';
 import { ConnectionBadge } from '@/components/gigs/connection-badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -59,6 +60,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
   }, [gig.id, userId, isHost, connect, disconnect]);
 
   const activeSong = songs.find(s => s.id === activeSongId) || null;
+  const activePhotos = useSongPhotos(activeSong?.id);
 
   const handleSongSelect = (songId: string) => {
     if (isAdmin) {
@@ -118,7 +120,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
         </div>
 
         {/* Song Display */}
-        <SongDisplay song={activeSong} isAdmin={isAdmin} send={send} />
+        <SongDisplay song={activeSong} isAdmin={isAdmin} send={send} photos={activePhotos} />
 
         {/* Members Panel */}
         {showMembers && (

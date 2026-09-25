@@ -62,6 +62,11 @@ vi.mock('@/hooks/use-supabase', () => ({
     from: vi.fn(() => ({
       insert: vi.fn().mockResolvedValue({ error: null }),
       update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          order: vi.fn().mockResolvedValue({ data: [], error: null }),
+        })),
+      })),
     })),
   }),
 }));

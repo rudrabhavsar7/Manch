@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { SongDisplay } from '@/components/live/song-display';
 import { Tables } from '@/types/database';
 
@@ -54,5 +55,68 @@ describe('SongDisplay', () => {
   it('renders transpose control for musician', () => {
     render(<SongDisplay song={mockSong} isAdmin={false} />);
     expect(screen.getByTestId('mock-transpose')).toBeInTheDocument();
+  });
+
+  it('does not render view toggle when song has no photos', () => {
+    render(<SongDisplay song={mockSong} isAdmin={true} photos={[]} />);
+    expect(screen.queryByTestId('view-toggle')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mock-song-renderer')).toBeInTheDocument();
+  });
+
+  it('shows toggle when both lyrics and photos exist, and switches views', async () => {
+    const user = userEvent.setup();
+    const photos = [
+      { id: 'p1', url: 'https://example.com/1.jpg' },
+      { id: 'p2', url: 'https://example.com/2.jpg' },
+    ];
+    render(<SongDisplay song={mockSong} isAdmin={true} photos={photos} />);
+
+    const toggle = screen.getByTestId('view-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(screen.getByTestId('mock-song-renderer')).toBeInTheDocument();
+    expect(screen.queryByTestId('photo-viewer')).not.toBeInTheDocument();
+
+    await user.click(toggle);
+
+    expect(screen.getByTestId('photo-viewer')).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-song-renderer')).not.toBeInTheDocument();
+    expect(screen.getByAltText(/song photo/i)).toHaveAttribute('src', 'https://example.com/1.jpg');
+  });
+
+  it('navigates multiple photos with prev/next and shows counter', async () => {
+    const user = userEvent.setup();
+    const photos = [
+      { id: 'p1', url: 'https://example.com/1.jpg' },
+      { id: 'p2', url: 'https://example.com/2.jpg' },
+    ];
+    render(<SongDisplay song={mockSong} isAdmin={true} photos={photos} />);
+
+    await user.click(screen.getByTestId('view-toggle'));
+
+    expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+
+    await user.click(screen.getByTestId('photo-next'));
+    expect(screen.getByTestId('photo-counter')).toHaveTextContent('2/2');
+    expect(screen.getByAltText(/song photo/i)).toHaveAttribute('src', 'https://example.com/2.jpg');
+
+    await user.click(screen.getByTestId('photo-prev'));
+    expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+  });
+
+  it('shows photo directly for photo-only song (no lyrics) without toggle', () => {
+    const photoOnlySong = { ...mockSong, content: '' };
+    const photos = [{ id: 'p1', url: 'https://example.com/1.jpg' }];
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+
+    expect(screen.queryByTestId('view-toggle')).not.toBeInTheDocument();
+    expect(screen.getByTestId('photo-viewer')).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-song-renderer')).not.toBeInTheDocument();
+  });
+
+  it('shows lyrics directly when song has lyrics but no photos', () => {
+    render(<SongDisplay song={mockSong} isAdmin={true} photos={[]} />);
+    expect(screen.queryByTestId('view-toggle')).not.toBeInTheDocument();
+    expect(screen.getByTestId('mock-song-renderer')).toBeInTheDocument();
+    expect(screen.queryByTestId('photo-viewer')).not.toBeInTheDocument();
   });
 });

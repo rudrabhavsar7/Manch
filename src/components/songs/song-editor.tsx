@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { SongRenderer } from './song-renderer';
+import { PhotoUploader, type PhotoItem } from './photo-uploader';
 import { useSupabase } from '@/hooks/use-supabase';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Database } from '@/types/database';
@@ -39,13 +40,131 @@ export function SongEditor({ song }: SongEditorProps) {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photoItems, setPhotoItems] = useState<PhotoItem[]>([]);
+  const [initialPhotoIds, setInitialPhotoIds] = useState<Set<string>>(new Set());
+  const [removedExisting, setRemovedExisting] = useState<{ id: string; storagePath: string }[]>([]);
 
   const supabase = useSupabase();
   const router = useRouter();
 
+  useEffect(() => {
+    if (!song?.id) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { data, error: fetchError } = await supabase
+          .from('song_photos')
+          .select('*')
+          .eq('song_id', song.id)
+          .order('position');
+        if (fetchError || !data || cancelled) return;
+
+        const items = await Promise.all(
+          data.map(async (p) => {
+            const { data: urlData } = await supabase.storage
+              .from('song-photos')
+              .createSignedUrl(p.storage_path, 3600);
+            if (!urlData?.signedUrl) return null;
+            return {
+              kind: 'existing' as const,
+              id: p.id,
+              storagePath: p.storage_path,
+              url: urlData.signedUrl,
+            };
+          }),
+        );
+        const valid = items.filter(
+          (i): i is Extract<PhotoItem, { kind: 'existing' }> => i !== null,
+        );
+        if (!cancelled) {
+          setPhotoItems(valid);
+          setInitialPhotoIds(new Set(valid.map((i) => i.id)));
+        }
+      } catch (err) {
+        console.error('Failed to load song photos:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [song?.id, supabase]);
+
+  function handleAddFiles(files: File[]) {
+    const newItems: PhotoItem[] = files.map((file) => {
+      let url = '';
+      try {
+        url = URL.createObjectURL(file);
+      } catch {
+        url = '';
+      }
+      return { kind: 'pending', file, url };
+    });
+    setPhotoItems((prev) => [...prev, ...newItems]);
+  }
+
+  function handleRemovePhoto(index: number) {
+    setPhotoItems((prev) => {
+      const item = prev[index];
+      if (item?.kind === 'existing') {
+        setRemovedExisting((r) => [...r, { id: item.id, storagePath: item.storagePath }]);
+      } else if (item?.kind === 'pending') {
+        URL.revokeObjectURL(item.url);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function handleMovePhoto(index: number, direction: -1 | 1) {
+    setPhotoItems((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
+  async function syncPhotos(songId: string, userId: string) {
+    for (const removed of removedExisting) {
+      await supabase.storage.from('song-photos').remove([removed.storagePath]);
+      await supabase.from('song_photos').delete().eq('id', removed.id);
+    }
+
+    for (let position = 0; position < photoItems.length; position++) {
+      const item = photoItems[position];
+      if (item.kind === 'existing') {
+        await supabase.from('song_photos').update({ position }).eq('id', item.id);
+      } else {
+        const ext = item.file.name.split('.').pop() || 'jpg';
+        const path = `${userId}/${songId}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('song-photos')
+          .upload(path, item.file, { contentType: item.file.type });
+        if (uploadError) {
+          console.error('Photo upload failed:', uploadError);
+          continue;
+        }
+        const { error: insertError } = await supabase.from('song_photos').insert({
+          song_id: songId,
+          storage_path: path,
+          position,
+        });
+        if (insertError) {
+          console.error('Photo row insert failed:', insertError);
+        }
+      }
+    }
+  }
+
   async function handleSave() {
     if (!title.trim()) {
       setError('Title is required');
+      return;
+    }
+    if (!content.trim() && photoItems.length === 0) {
+      setError('Add lyrics or at least one photo');
       return;
     }
 
@@ -70,6 +189,8 @@ export function SongEditor({ song }: SongEditorProps) {
       structure: song?.structure ?? [],
     };
 
+    let savedSongId: string | null = song?.id ?? null;
+
     if (song) {
       const { error: err } = await supabase
         .from('songs')
@@ -77,22 +198,29 @@ export function SongEditor({ song }: SongEditorProps) {
         .eq('id', song.id);
       if (err) {
         setError(err.message);
-      } else {
-        router.refresh();
-        router.push('/songs');
+        setSaving(false);
+        return;
       }
     } else {
-      const { error: err } = await supabase
+      const { data: newSong, error: err } = await supabase
         .from('songs')
-        .insert({ ...songData, owner_id: user.id });
-      if (err) {
-        setError(err.message);
-      } else {
-        router.refresh();
-        router.push('/songs');
+        .insert({ ...songData, owner_id: user.id })
+        .select()
+        .single();
+      if (err || !newSong) {
+        setError(err?.message ?? 'Failed to create song');
+        setSaving(false);
+        return;
       }
+      savedSongId = newSong.id;
     }
 
+    if (savedSongId) {
+      await syncPhotos(savedSongId, user.id);
+    }
+
+    router.refresh();
+    router.push('/songs');
     setSaving(false);
   }
 
@@ -225,6 +353,15 @@ export function SongEditor({ song }: SongEditorProps) {
                   rows={18}
                   className="font-mono text-sm bg-elevated border-stageBorder focus-visible:ring-2 focus-visible:ring-stageAccent shadow-none text-textPrimary"
                   placeholder="[Am]Start typing your [G]song here..."
+                />
+              </div>
+              <div className="pt-2 border-t border-stageBorder mt-4">
+                <PhotoUploader
+                  items={photoItems}
+                  disabled={saving || deleting}
+                  onAddFiles={handleAddFiles}
+                  onRemove={handleRemovePhoto}
+                  onMove={handleMovePhoto}
                 />
               </div>
             </TabsContent>
