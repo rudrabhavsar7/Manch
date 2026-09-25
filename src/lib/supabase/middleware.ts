@@ -1,8 +1,22 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+const PUBLIC_ROUTES = [
+  '/',
+  '/auth/login',
+  '/auth/signup',
+  '/auth/callback',
+  '/manifest.json',
+  '/sw.js',
+];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
+
+  // Public routes need no session check — skip auth roundtrips entirely.
+  if (PUBLIC_ROUTES.includes(request.nextUrl.pathname)) {
+    return supabaseResponse;
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -25,13 +39,11 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the JWT locally (asymmetric keys + cached JWKS)
+  // instead of a network roundtrip per request like getUser().
+  const { data } = await supabase.auth.getClaims();
 
-  // Redirect unauthenticated users to login (except public routes)
-  const publicRoutes = ['/', '/auth/login', '/auth/signup', '/auth/callback', '/manifest.json', '/sw.js'];
-  if (!user && !publicRoutes.includes(request.nextUrl.pathname)) {
+  if (!data?.claims) {
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     const redirectResponse = NextResponse.redirect(url);

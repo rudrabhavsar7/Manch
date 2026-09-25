@@ -12,41 +12,48 @@ export default async function GigPage({ params }: GigPageProps) {
   const gigId = resolvedParams.id;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // Wave 1: auth check and gig fetch are independent — run in parallel.
+  const [gigResult, userResult] = await Promise.all([
+    supabase.from('gigs').select('*').eq('id', gigId).single(),
+    supabase.auth.getUser(),
+  ]);
+
+  const {
+    data: { user },
+  } = userResult;
 
   if (!user) {
     redirect('/auth/login');
   }
 
-  // Fetch gig
-  const { data: gig, error: gigError } = await supabase
-    .from('gigs')
-    .select('*')
-    .eq('id', gigId)
-    .single();
+  const { data: gig, error: gigError } = gigResult;
 
   if (gigError || !gig) {
     notFound();
   }
 
-  // Fetch membership
-  const { data: member, error: memberError } = await supabase
-    .from('gig_members')
-    .select('role')
-    .eq('gig_id', gigId)
-    .eq('user_id', user.id)
-    .single();
+  // Wave 2: membership and setlist songs only depend on wave 1 results.
+  const [memberResult, songsResult] = await Promise.all([
+    supabase
+      .from('gig_members')
+      .select('role')
+      .eq('gig_id', gigId)
+      .eq('user_id', user.id)
+      .single(),
+    supabase
+      .from('setlist_songs')
+      .select('song_id, position, songs(*)')
+      .eq('setlist_id', gig.setlist_id)
+      .order('position'),
+  ]);
+
+  const { data: member, error: memberError } = memberResult;
 
   if (memberError || !member) {
     notFound();
   }
 
-  // Fetch setlist songs
-  const { data: setlistSongs, error: songsError } = await supabase
-    .from('setlist_songs')
-    .select('song_id, position, songs(*)')
-    .eq('setlist_id', gig.setlist_id)
-    .order('position');
+  const { data: setlistSongs, error: songsError } = songsResult;
 
   if (songsError || !setlistSongs) {
     notFound();

@@ -47,23 +47,21 @@ export function JoinGigForm() {
     setError(null);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      // 1. Lookup active live gig
+      // Start gig lookup immediately — independent of auth check.
       let query = supabase.from('gigs').select('id, setlist_id, status').eq('status', 'live');
       if (pinValue) {
         query = query.eq('pin', pinValue.padStart(4, '0'));
       } else if (gigIdValue) {
         query = query.eq('id', gigIdValue);
       }
+      const gigPromise = query.single();
 
-      const { data: gig, error: gigErr } = await query.single();
-      if (gigErr || !gig) throw new Error('No active gig found with this PIN');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-      // 2. Ensure public.users profile exists (FK for gig_members).
+      // Ensure public.users profile exists (FK for gig_members).
       // Covers users created before the handle_new_user trigger existed.
       const { error: profileErr } = await supabase.from('users').upsert(
         {
@@ -80,6 +78,9 @@ export function JoinGigForm() {
       if (profileErr) {
         console.error('Failed to ensure user profile:', profileErr);
       }
+
+      const { data: gig, error: gigErr } = await gigPromise;
+      if (gigErr || !gig) throw new Error('No active gig found with this PIN');
 
       // 3. Insert membership first with onConflict so user becomes a member for RLS
       const { error: memberErr } = await supabase.from('gig_members').upsert(
