@@ -8,6 +8,7 @@ const PUBLIC_ROUTES = [
   '/auth/callback',
   '/manifest.json',
   '/sw.js',
+  '/api/timing',
 ];
 
 export async function updateSession(request: NextRequest) {
