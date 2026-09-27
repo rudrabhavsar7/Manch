@@ -235,4 +235,79 @@ describe('SongDisplay photo zoom & fullscreen', () => {
     act(() => { document.dispatchEvent(new Event('fullscreenchange')); });
     expect(viewer).toHaveAttribute('data-fullscreen', 'false');
   });
+
+  it('hides font size and auto scroll controls in photo mode', async () => {
+    const user = userEvent.setup();
+    render(<SongDisplay song={mockSong} isAdmin={true} photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]} />);
+
+    expect(screen.getByTestId('mock-font-size')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-auto-scroll')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('view-toggle'));
+
+    expect(screen.queryByTestId('mock-font-size')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mock-auto-scroll')).not.toBeInTheDocument();
+    expect(screen.getByTestId('view-toggle')).toBeInTheDocument();
+  });
+
+  it('fullscreen shows song navigation for admin and switches song', async () => {
+    const user = userEvent.setup();
+    const onSongSelect = vi.fn();
+    const songs = [
+      { ...mockSong, id: 's1', title: 'First' },
+      { ...mockSong, id: 's2', title: 'Second' },
+      { ...mockSong, id: 's3', title: 'Third' },
+    ];
+    render(
+      <SongDisplay
+        song={songs[1]}
+        isAdmin={true}
+        photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]}
+        songs={songs}
+        onSongSelect={onSongSelect}
+      />
+    );
+
+    await user.click(screen.getByTestId('view-toggle'));
+    expect(screen.queryByTestId('photo-song-next')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('photo-fullscreen'));
+    act(() => {
+      fullscreenElementMock = screen.getByTestId('photo-viewer');
+      document.dispatchEvent(new Event('fullscreenchange'));
+    });
+
+    expect(screen.getByTestId('photo-song-counter')).toHaveTextContent('2/3');
+    await user.click(screen.getByTestId('photo-song-next'));
+    expect(onSongSelect).toHaveBeenCalledWith('s3');
+    await user.click(screen.getByTestId('photo-song-prev'));
+    expect(onSongSelect).toHaveBeenCalledWith('s1');
+  });
+
+  it('fullscreen song navigation hidden for musicians', async () => {
+    const user = userEvent.setup();
+    const songs = [
+      { ...mockSong, id: 's1', title: 'First' },
+      { ...mockSong, id: 's2', title: 'Second' },
+    ];
+    render(
+      <SongDisplay
+        song={songs[0]}
+        isAdmin={false}
+        photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]}
+        songs={songs}
+        onSongSelect={vi.fn()}
+      />
+    );
+
+    await user.click(screen.getByTestId('view-toggle'));
+    await user.click(screen.getByTestId('photo-fullscreen'));
+    act(() => {
+      fullscreenElementMock = screen.getByTestId('photo-viewer');
+      document.dispatchEvent(new Event('fullscreenchange'));
+    });
+
+    expect(screen.queryByTestId('photo-song-next')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('photo-song-prev')).not.toBeInTheDocument();
+  });
 });

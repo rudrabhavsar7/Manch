@@ -12,7 +12,7 @@ import { GeneralNotes } from './general-notes';
 import { AnnotationLayer } from './annotation-layer';
 import { useGigStore } from '@/stores/gig-store';
 import { throttle } from '@/lib/utils/throttle';
-import { ChevronLeft, ChevronRight, FileText, Image as ImageIcon, ZoomIn, ZoomOut, Maximize2, Minimize2, Scan } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Image as ImageIcon, ZoomIn, ZoomOut, Maximize2, Minimize2, Scan, SkipBack, SkipForward } from 'lucide-react';
 
 type Song = Tables<'songs'>;
 
@@ -36,9 +36,11 @@ interface SongDisplayProps {
   isAdmin: boolean;
   send?: (msg: import('@/lib/sync/message-types').SyncMessage) => void;
   photos?: SongPhoto[];
+  songs?: Song[];
+  onSongSelect?: (songId: string) => void;
 }
 
-export function SongDisplay({ song, isAdmin, send, photos = [] }: SongDisplayProps) {
+export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSongSelect }: SongDisplayProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fontSize = useUIStore((state) => state.fontSize);
   const transpose = useUIStore((state) => state.transposeMap[song?.id || ''] || 0);
@@ -198,6 +200,8 @@ export function SongDisplay({ song, isAdmin, send, photos = [] }: SongDisplayPro
   const showToggle = hasContent && hasPhotos;
   const showPhoto = hasPhotos && (!hasContent || viewMode === 'photo');
   const safeIndex = Math.min(photoIndex, photos.length - 1);
+  const songIndex = songs.findIndex((s) => s.id === song.id);
+  const showSongNav = isFullscreen && isAdmin && songs.length > 1 && songIndex >= 0;
 
   return (
     <div className="flex-1 flex flex-col h-full bg-stage overflow-hidden relative">
@@ -247,16 +251,20 @@ export function SongDisplay({ song, isAdmin, send, photos = [] }: SongDisplayPro
             onAdd={(content, color) => addAnnotation('general', content, color)}
             onDelete={deleteAnnotation}
           />
-          <div className="w-px h-6 bg-border mx-1" />
+          {(!showPhoto || !isAdmin) && <div className="w-px h-6 bg-border mx-1" />}
           {!isAdmin && (
             <>
               <TransposeControl songId={song.id} originalKey={song.key || 'C'} />
               <div className="w-px h-6 bg-border mx-1" />
             </>
           )}
-          <FontSizeControl />
-          <div className="w-px h-6 bg-border mx-1" />
-          <AutoScroll containerRef={scrollRef} />
+          {!showPhoto && (
+            <>
+              <FontSizeControl />
+              <div className="w-px h-6 bg-border mx-1" />
+              <AutoScroll containerRef={scrollRef} />
+            </>
+          )}
         </div>
       </div>
       
@@ -329,6 +337,39 @@ export function SongDisplay({ song, isAdmin, send, photos = [] }: SongDisplayPro
               <Scan className="h-4 w-4 mr-1" /> Fit
             </Button>
             <div className="w-px h-5 bg-border mx-1" />
+            {showSongNav && (
+              <>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Previous song"
+                  data-testid="photo-song-prev"
+                  disabled={songIndex === 0}
+                  className="text-textPrimary"
+                  onClick={() => onSongSelect?.(songs[songIndex - 1].id)}
+                >
+                  <SkipBack className="h-4 w-4" />
+                </Button>
+                <span
+                  data-testid="photo-song-counter"
+                  className="text-xs font-mono text-muted-foreground w-10 text-center"
+                >
+                  {songIndex + 1}/{songs.length}
+                </span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label="Next song"
+                  data-testid="photo-song-next"
+                  disabled={songIndex === songs.length - 1}
+                  className="text-textPrimary"
+                  onClick={() => onSongSelect?.(songs[songIndex + 1].id)}
+                >
+                  <SkipForward className="h-4 w-4" />
+                </Button>
+                <div className="w-px h-5 bg-border mx-1" />
+              </>
+            )}
             <Button
               size="icon"
               variant="ghost"
