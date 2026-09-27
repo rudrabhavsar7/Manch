@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { LiveView } from '@/components/live/live-view';
+import { useGigStore } from '@/stores/gig-store';
 import { Tables } from '@/types/database';
+
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: pushMock, replace: vi.fn(), back: vi.fn() }),
+  usePathname: () => '/gigs/gig-1',
+}));
 
 // Mock child components
 vi.mock('@/components/live/setlist-sidebar', () => ({
@@ -130,5 +138,37 @@ describe('LiveView', () => {
         onSend: expect.any(Function),
       })
     );
+  });
+
+  it('routes musician to dashboard when gig ends', async () => {
+    render(
+      <LiveView
+        gig={mockGig}
+        songs={mockSongs}
+        songIds={[]}
+        myRole="musician"
+        userId="user-2"
+      />
+    );
+
+    act(() => { useGigStore.getState().setStatus('ended'); });
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
+  });
+
+  it('does not redirect admin from live view on status ended', () => {
+    render(
+      <LiveView
+        gig={mockGig}
+        songs={mockSongs}
+        songIds={[]}
+        myRole="admin"
+        userId="user-1"
+      />
+    );
+
+    act(() => { useGigStore.getState().setStatus('ended'); });
+
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });

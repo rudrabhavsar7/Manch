@@ -1,11 +1,22 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { AdminControls } from '@/components/live/admin-controls';
 import { useGigStore } from '@/stores/gig-store';
 import { useSync } from '@/hooks/use-sync';
 
 vi.mock('@/hooks/use-sync', () => ({
   useSync: vi.fn()
+}));
+
+const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: pushMock, replace: vi.fn(), back: vi.fn() }),
+  usePathname: () => '/gigs/test-gig',
+}));
+
+vi.mock('@/hooks/use-gig', () => ({
+  useGigActions: () => ({ endGig: vi.fn().mockResolvedValue({ error: null }) }),
 }));
 
 const mockSend = vi.fn();
@@ -67,15 +78,23 @@ describe('AdminControls', () => {
     expect(screen.getByTestId('admin-next')).toBeDisabled();
   });
 
-  it('handles end gig', () => {
+  it('handles end gig', async () => {
     render(<AdminControls songIds={songIds} onSend={mockSend} />);
     
     fireEvent.click(screen.getByTestId('admin-end-gig'));
     
-    expect(useGigStore.getState().status).toBe('ended');
+    await waitFor(() => expect(useGigStore.getState().status).toBe('ended'));
     expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
       type: 'GIG_STATUS',
       status: 'ended'
     }));
+  });
+
+  it('routes to dashboard after ending gig', async () => {
+    render(<AdminControls songIds={songIds} onSend={mockSend} />);
+
+    fireEvent.click(screen.getByTestId('admin-end-gig'));
+
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
   });
 });

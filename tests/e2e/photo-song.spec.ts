@@ -89,10 +89,9 @@ test('create song with photos, persists on edit, photo mode in live view', async
   await expect(viewer).toHaveCount(0);
   await expect(page.getByTestId('song-scroll-container')).toBeVisible();
 
-  // 6. Cleanup: end the gig, verify it leaves the live list
+  // 6. Cleanup: end the gig → routes to dashboard, gig leaves the live list
   await page.getByTestId('admin-end-gig').click();
-  await page.waitForTimeout(2000);
-  await page.goto('/dashboard');
+  await page.waitForURL('**/dashboard');
   await page.waitForLoadState('networkidle');
   await expect(page.getByText(GIG_TITLE)).toHaveCount(0);
 });

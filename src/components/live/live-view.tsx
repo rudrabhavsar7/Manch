@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Menu, Users } from 'lucide-react';
 import { Tables } from '@/types/database';
 import { useGigStore } from '@/stores/gig-store';
@@ -34,6 +35,8 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
   const setStatus = useGigStore((state) => state.setStatus);
   const setActiveSongId = useGigStore((state) => state.setActiveSongId);
   const activeSongId = useGigStore((state) => state.activeSongId);
+  const status = useGigStore((state) => state.status);
+  const router = useRouter();
   
   const [showMembers, setShowMembers] = useState(false);
   const isAdmin = myRole === 'admin' || myRole === 'co-admin';
@@ -58,6 +61,13 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
       disconnect();
     };
   }, [gig.id, userId, isHost, connect, disconnect]);
+
+  useEffect(() => {
+    // Musicians leave automatically when the gig ends; admin navigates from the End Gig button
+    if (status === 'ended' && !isAdmin) {
+      router.push('/dashboard');
+    }
+  }, [status, isAdmin, router]);
 
   const activeSong = songs.find(s => s.id === activeSongId) || null;
   const activePhotos = useSongPhotos(activeSong?.id);

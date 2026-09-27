@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Square } from 'lucide-react';
 import { useGigStore } from '@/stores/gig-store';
 import { useGigActions } from '@/hooks/use-gig';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useCallback } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
   const setStatus = useGigStore((state) => state.setStatus);
   const gigIdFromStore = useGigStore((state) => state.gigId);
   const pathname = usePathname();
+  const router = useRouter();
   const { endGig } = useGigActions();
 
   // Fallback: extract gigId from URL if not in store
@@ -63,7 +64,8 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
     }
     setStatus('ended');
     onSend({ type: 'GIG_STATUS', status: 'ended', timestamp: Date.now() });
-  }, [gigId, endGig, setStatus, onSend]);
+    router.push('/dashboard');
+  }, [gigId, endGig, setStatus, onSend, router]);
 
   return (
     <div className="flex items-center justify-between w-full p-2 h-[56px] bg-surface border-t border-border" suppressHydrationWarning>
