@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SongDisplay } from '@/components/live/song-display';
 import { Tables } from '@/types/database';
@@ -118,5 +118,121 @@ describe('SongDisplay', () => {
     expect(screen.queryByTestId('view-toggle')).not.toBeInTheDocument();
     expect(screen.getByTestId('mock-song-renderer')).toBeInTheDocument();
     expect(screen.queryByTestId('photo-viewer')).not.toBeInTheDocument();
+  });
+});
+
+describe('SongDisplay photo zoom & fullscreen', () => {
+  let fullscreenElementMock: Element | null = null;
+
+  const photoOnlySong = { ...mockSong, content: '' };
+  const photos = [
+    { id: 'p1', url: 'https://example.com/1.jpg' },
+    { id: 'p2', url: 'https://example.com/2.jpg' },
+  ];
+
+  beforeEach(() => {
+    fullscreenElementMock = null;
+    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockResolvedValue(undefined),
+    });
+    Object.defineProperty(document, 'exitFullscreen', {
+      configurable: true,
+      writable: true,
+      value: vi.fn().mockResolvedValue(undefined),
+    });
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => fullscreenElementMock,
+    });
+  });
+
+  it('shows zoom toolbar with level readout in photo mode', () => {
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+    expect(screen.getByTestId('photo-zoom-in')).toBeInTheDocument();
+    expect(screen.getByTestId('photo-zoom-out')).toBeDisabled();
+    expect(screen.getByTestId('photo-zoom-reset')).toBeDisabled();
+    expect(screen.getByTestId('photo-fullscreen')).toBeInTheDocument();
+  });
+
+  it('wheel zooms in and out', () => {
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+    const viewer = screen.getByTestId('photo-viewer');
+
+    fireEvent.wheel(viewer, { deltaY: -100 });
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('110%');
+
+    fireEvent.wheel(viewer, { deltaY: 100 });
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+  });
+
+  it('zoom buttons adjust level and fit resets to 100%', () => {
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+
+    fireEvent.click(screen.getByTestId('photo-zoom-in'));
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('125%');
+    expect(screen.getByTestId('photo-zoom-out')).toBeEnabled();
+    expect(screen.getByTestId('photo-zoom-reset')).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId('photo-zoom-out'));
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+
+    fireEvent.wheel(screen.getByTestId('photo-viewer'), { deltaY: -100 });
+    fireEvent.wheel(screen.getByTestId('photo-viewer'), { deltaY: -100 });
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('121%');
+    fireEvent.click(screen.getByTestId('photo-zoom-reset'));
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+  });
+
+  it('pans image only when zoomed', () => {
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+    const viewer = screen.getByTestId('photo-viewer');
+    const img = screen.getByAltText(/song photo/i);
+
+    fireEvent.pointerDown(viewer, { clientX: 100, clientY: 100, pointerId: 1, isPrimary: true });
+    fireEvent.pointerMove(viewer, { clientX: 150, clientY: 120, pointerId: 1, isPrimary: true });
+    fireEvent.pointerUp(viewer, { pointerId: 1, isPrimary: true });
+    expect(img.style.transform).toBe('translate(0px, 0px) scale(1)');
+
+    fireEvent.wheel(viewer, { deltaY: -100 });
+    fireEvent.pointerDown(viewer, { clientX: 100, clientY: 100, pointerId: 1, isPrimary: true });
+    fireEvent.pointerMove(viewer, { clientX: 150, clientY: 120, pointerId: 1, isPrimary: true });
+    fireEvent.pointerUp(viewer, { pointerId: 1, isPrimary: true });
+    expect(img.style.transform).toContain('translate(50px, 20px)');
+    expect(img.style.transform).toContain('scale(1.1)');
+  });
+
+  it('resets zoom when switching photos', () => {
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+    const viewer = screen.getByTestId('photo-viewer');
+
+    fireEvent.wheel(viewer, { deltaY: -100 });
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('110%');
+
+    fireEvent.click(screen.getByTestId('photo-next'));
+    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+  });
+
+  it('enters and exits fullscreen', async () => {
+    const user = userEvent.setup();
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+    const viewer = screen.getByTestId('photo-viewer');
+
+    await user.click(screen.getByTestId('photo-fullscreen'));
+    expect(HTMLElement.prototype.requestFullscreen).toHaveBeenCalledTimes(1);
+
+    fullscreenElementMock = viewer;
+    act(() => { document.dispatchEvent(new Event('fullscreenchange')); });
+    expect(viewer).toHaveAttribute('data-fullscreen', 'true');
+
+    await user.click(screen.getByTestId('photo-fullscreen'));
+    expect(document.exitFullscreen).toHaveBeenCalledTimes(1);
+
+    fullscreenElementMock = null;
+    act(() => { document.dispatchEvent(new Event('fullscreenchange')); });
+    expect(viewer).toHaveAttribute('data-fullscreen', 'false');
   });
 });

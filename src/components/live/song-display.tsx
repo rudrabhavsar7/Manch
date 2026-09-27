@@ -12,9 +12,19 @@ import { GeneralNotes } from './general-notes';
 import { AnnotationLayer } from './annotation-layer';
 import { useGigStore } from '@/stores/gig-store';
 import { throttle } from '@/lib/utils/throttle';
-import { ChevronLeft, ChevronRight, FileText, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Image as ImageIcon, ZoomIn, ZoomOut, Maximize2, Minimize2, Scan } from 'lucide-react';
 
 type Song = Tables<'songs'>;
+
+const PHOTO_MIN_SCALE = 1;
+const PHOTO_MAX_SCALE = 8;
+const WHEEL_STEP = 1.1;
+const BUTTON_STEP = 1.25;
+const PINCH_BASE_SCALE = 2.5;
+const DOUBLE_TAP_MS = 300;
+
+const clampScale = (value: number) =>
+  Math.min(PHOTO_MAX_SCALE, Math.max(PHOTO_MIN_SCALE, value));
 
 export interface SongPhoto {
   id: string;
@@ -38,11 +48,110 @@ export function SongDisplay({ song, isAdmin, send, photos = [] }: SongDisplayPro
 
   const [viewMode, setViewMode] = useState<'lyrics' | 'photo'>('lyrics');
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [scale, setScale] = useState(PHOTO_MIN_SCALE);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const photoContainerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null);
+  const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
+  const pinchedRef = useRef(false);
+  const lastTapRef = useRef(0);
 
   useEffect(() => {
     setViewMode('lyrics');
     setPhotoIndex(0);
+    setScale(PHOTO_MIN_SCALE);
+    setOffset({ x: 0, y: 0 });
   }, [song?.id]);
+
+  useEffect(() => {
+    setScale(PHOTO_MIN_SCALE);
+    setOffset({ x: 0, y: 0 });
+  }, [photoIndex]);
+
+  useEffect(() => {
+    if (scale === PHOTO_MIN_SCALE && (offset.x !== 0 || offset.y !== 0)) {
+      setOffset({ x: 0, y: 0 });
+    }
+  }, [scale, offset]);
+
+  useEffect(() => {
+    const onFullscreenChange = () =>
+      setIsFullscreen(document.fullscreenElement === photoContainerRef.current);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    setScale((s) => clampScale(e.deltaY < 0 ? s * WHEEL_STEP : s / WHEEL_STEP));
+  }, []);
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (scale <= PHOTO_MIN_SCALE) return;
+    dragRef.current = { pointerId: e.pointerId, lastX: e.clientX, lastY: e.clientY };
+  }, [scale]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    const dx = e.clientX - drag.lastX;
+    const dy = e.clientY - drag.lastY;
+    drag.lastX = e.clientX;
+    drag.lastY = e.clientY;
+    setOffset((o) => ({ x: o.x + dx, y: o.y + dy }));
+  }, []);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    if (dragRef.current?.pointerId === e.pointerId) dragRef.current = null;
+  }, []);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      pinchedRef.current = true;
+      const a = e.touches[0];
+      const b = e.touches[1];
+      pinchRef.current = {
+        dist: Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY),
+        scale,
+      };
+    }
+  }, [scale]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length !== 2 || !pinchRef.current) return;
+    const a = e.touches[0];
+    const b = e.touches[1];
+    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    if (pinchRef.current.dist > 0) {
+      setScale(clampScale(pinchRef.current.scale * (dist / pinchRef.current.dist)));
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length > 0) return;
+    pinchRef.current = null;
+    if (pinchedRef.current) {
+      pinchedRef.current = false;
+      lastTapRef.current = 0;
+      return;
+    }
+    const now = Date.now();
+    if (now - lastTapRef.current < DOUBLE_TAP_MS) {
+      setScale((s) => (s > PHOTO_MIN_SCALE ? PHOTO_MIN_SCALE : PINCH_BASE_SCALE));
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+    }
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await photoContainerRef.current?.requestFullscreen();
+    }
+  }, []);
 
   const throttledSend = React.useMemo(() => throttle((el: HTMLDivElement) => {
     if (!isAdmin || !send) return;
@@ -153,14 +262,84 @@ export function SongDisplay({ song, isAdmin, send, photos = [] }: SongDisplayPro
       
       {showPhoto ? (
         <div
+          ref={photoContainerRef}
           data-testid="photo-viewer"
-          className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden bg-stage"
+          data-fullscreen={isFullscreen}
+          className="relative flex-1 flex flex-col items-center justify-center p-4 overflow-hidden bg-stage"
+          onWheel={handleWheel}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           <img
             src={photos[safeIndex]?.url}
             alt="Song photo"
-            className="max-w-full max-h-full object-contain rounded-lg"
+            className="max-w-full max-h-full object-contain rounded-lg select-none"
+            style={{
+              transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+              cursor: scale > PHOTO_MIN_SCALE ? 'grab' : 'default',
+            }}
+            draggable={false}
           />
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-elevated border border-stageBorder rounded-lg px-3 py-2 z-10">
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Zoom out"
+              data-testid="photo-zoom-out"
+              disabled={scale <= PHOTO_MIN_SCALE}
+              className="text-textPrimary"
+              onClick={() => setScale((s) => clampScale(s / BUTTON_STEP))}
+            >
+              <ZoomOut className="h-4 w-4" />
+            </Button>
+            <span
+              data-testid="photo-zoom-level"
+              className="text-xs font-mono text-muted-foreground w-10 text-center"
+            >
+              {Math.round(scale * 100)}%
+            </span>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Zoom in"
+              data-testid="photo-zoom-in"
+              disabled={scale >= PHOTO_MAX_SCALE}
+              className="text-textPrimary"
+              onClick={() => setScale((s) => clampScale(s * BUTTON_STEP))}
+            >
+              <ZoomIn className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="Fit to screen"
+              data-testid="photo-zoom-reset"
+              disabled={scale <= PHOTO_MIN_SCALE}
+              className="text-textPrimary"
+              onClick={() => {
+                setScale(PHOTO_MIN_SCALE);
+                setOffset({ x: 0, y: 0 });
+              }}
+            >
+              <Scan className="h-4 w-4 mr-1" /> Fit
+            </Button>
+            <div className="w-px h-5 bg-border mx-1" />
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+              data-testid="photo-fullscreen"
+              className="text-textPrimary"
+              onClick={toggleFullscreen}
+            >
+              {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+          </div>
           {photos.length > 1 && (
             <div className="flex items-center gap-4 mt-4">
               <Button

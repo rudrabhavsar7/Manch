@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { SetlistSidebar } from '@/components/live/setlist-sidebar';
 import { useGigStore } from '@/stores/gig-store';
 import { Tables } from '@/types/database';
@@ -52,5 +52,47 @@ describe('SetlistSidebar', () => {
     expect(item).toBeDisabled();
     fireEvent.click(item);
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('shows search input for admin only', () => {
+    const { unmount } = render(<SetlistSidebar songs={mockSongs} isAdmin={true} />);
+    expect(screen.getByTestId('setlist-search')).toBeInTheDocument();
+    unmount();
+
+    render(<SetlistSidebar songs={mockSongs} isAdmin={false} />);
+    expect(screen.queryByTestId('setlist-search')).not.toBeInTheDocument();
+  });
+
+  it('filters songs by title and by artist', () => {
+    render(<SetlistSidebar songs={mockSongs} isAdmin={true} />);
+    const input = screen.getByTestId('setlist-search');
+
+    fireEvent.change(input, { target: { value: 'song 2' } });
+    expect(screen.getByTestId('setlist-item-2')).toBeInTheDocument();
+    expect(screen.queryByTestId('setlist-item-1')).not.toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: 'artist 1' } });
+    expect(screen.getByTestId('setlist-item-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('setlist-item-2')).not.toBeInTheDocument();
+  });
+
+  it('keeps original list numbering when filtered', () => {
+    render(<SetlistSidebar songs={mockSongs} isAdmin={true} />);
+    fireEvent.change(screen.getByTestId('setlist-search'), { target: { value: 'song 2' } });
+
+    expect(within(screen.getByTestId('setlist-item-2')).getByText('2.')).toBeInTheDocument();
+  });
+
+  it('shows empty state when nothing matches, clears restore full list', () => {
+    render(<SetlistSidebar songs={mockSongs} isAdmin={true} />);
+    const input = screen.getByTestId('setlist-search');
+
+    fireEvent.change(input, { target: { value: 'zzz' } });
+    expect(screen.getByText('No songs match')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: '' } });
+    expect(screen.getByTestId('setlist-item-1')).toBeInTheDocument();
+    expect(screen.getByTestId('setlist-item-2')).toBeInTheDocument();
+    expect(screen.queryByText('No songs match')).not.toBeInTheDocument();
   });
 });
