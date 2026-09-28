@@ -120,6 +120,18 @@ describe('Song Pages', () => {
       expect(screen.getAllByText('F#m').length).toBeGreaterThan(0);
     });
 
+    it('page header wraps for narrow screens', async () => {
+      const page = await SongsPage({});
+      render(page);
+
+      const h1 = screen.getByRole('heading', { name: /song library/i });
+      expect(h1).toHaveClass('text-2xl');
+      expect(h1).toHaveClass('sm:text-3xl');
+      const headerRow = h1.parentElement?.parentElement;
+      expect(headerRow).toHaveClass('flex-wrap');
+      expect(headerRow).toHaveClass('gap-3');
+    });
+
     it('renders empty state when user has no songs', async () => {
       mockOrder.mockResolvedValueOnce({ data: [] });
 

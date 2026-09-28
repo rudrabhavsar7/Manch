@@ -50,7 +50,7 @@ export default function RootLayout({
           jetbrainsMono.variable,
           notoSansGujarati.variable,
           notoSansDevanagari.variable,
-          'min-h-screen bg-background text-foreground antialiased'
+          'min-h-dvh bg-background text-foreground antialiased'
         )}
       >
         <AppShell>{children}</AppShell>

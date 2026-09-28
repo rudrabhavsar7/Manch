@@ -34,9 +34,9 @@ export default async function SetlistsPage() {
 
   return (
     <div className="container mx-auto p-4 space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-textPrimary">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-textPrimary">
             Setlists
           </h1>
           <p className="text-sm text-textSecondary mt-1">

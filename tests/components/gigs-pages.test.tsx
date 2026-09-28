@@ -148,6 +148,18 @@ describe('Gig Pages', () => {
       expect(newLink).toHaveAttribute('href', '/gigs/new');
     });
 
+    it('page header wraps for narrow screens', async () => {
+      const jsx = await GigsPage();
+      render(jsx!);
+
+      const h1 = screen.getByRole('heading', { name: 'Gigs' });
+      expect(h1).toHaveClass('text-2xl');
+      expect(h1).toHaveClass('sm:text-3xl');
+      const headerRow = h1.parentElement?.parentElement;
+      expect(headerRow).toHaveClass('flex-wrap');
+      expect(headerRow).toHaveClass('gap-3');
+    });
+
     it('renders empty state when no gigs exist', async () => {
       mockMembershipsEq.mockResolvedValue({ data: [] });
       mockGigsOrder.mockResolvedValue({ data: [] });

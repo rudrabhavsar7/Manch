@@ -33,9 +33,9 @@ export default async function SongsPage(props: SongsPageProps) {
 
   return (
     <div className="container mx-auto p-4 space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-textPrimary">Song Library</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-textPrimary">Song Library</h1>
           <p className="text-sm text-textSecondary mt-1">Manage your repertoire and chord charts</p>
         </div>
         <Button asChild className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium">

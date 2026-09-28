@@ -10,7 +10,7 @@ export default function Home() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
+    <div className="flex flex-col min-h-dvh bg-background text-foreground">
       {/* Hero Section */}
       <section className="container mx-auto px-4 py-16 md:py-24 max-w-5xl flex flex-col items-center text-center space-y-6">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-stageAccent/10 text-stageAccent border border-stageAccent/20">

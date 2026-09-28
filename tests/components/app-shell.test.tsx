@@ -124,6 +124,20 @@ describe('AppShell component', () => {
     }
   });
 
+  it('uses dynamic viewport units so mobile URL bar cannot clip layout', () => {
+    mockPathname.mockReturnValue('/dashboard');
+
+    const { container } = render(
+      <AppShell>
+        <div>Content</div>
+      </AppShell>,
+    );
+
+    const root = container.querySelector('.min-h-dvh');
+    expect(root).toBeInTheDocument();
+    expect(container.querySelector('.min-h-screen')).not.toBeInTheDocument();
+  });
+
   it('syncs theme class with documentElement', () => {
     mockPathname.mockReturnValue('/dashboard');
     useUIStore.setState({ theme: 'light' });

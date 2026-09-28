@@ -53,7 +53,7 @@ export default async function DashboardPage() {
   return (
     <div className="container mx-auto p-4 space-y-6 max-w-6xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-textPrimary">Dashboard</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-textPrimary">Dashboard</h1>
         <p className="text-sm text-textSecondary mt-1">Overview of your repertoire, setlists, and gigs</p>
       </div>
 

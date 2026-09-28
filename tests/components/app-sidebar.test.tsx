@@ -73,6 +73,13 @@ describe('AppSidebar component', () => {
     expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument();
   });
 
+  it('uses dynamic viewport height so sticky sidebar survives mobile URL bar', () => {
+    const { container } = render(<AppSidebar />);
+    const aside = container.querySelector('aside');
+    expect(aside).toHaveClass('h-dvh');
+    expect(aside).not.toHaveClass('h-screen');
+  });
+
   it('calls signOut on Sign Out button click', () => {
     render(<AppSidebar />);
 
