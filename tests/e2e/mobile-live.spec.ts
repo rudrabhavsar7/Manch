@@ -106,37 +106,45 @@ test('live view fits a 390px phone without horizontal overflow', async ({ page }
   await dialog.locator('[data-testid^="setlist-item-"]').first().click();
   await expect(dialog).toBeHidden();
 
-  // L4: photo mode + fullscreen toolbar within viewport
+  // L4: photo mode is immersive on phone — overlay fills viewport, chrome minimal
   await page.getByTestId('view-toggle').click();
-  await page.getByTestId('photo-viewer').waitFor();
+  const viewer = page.getByTestId('photo-viewer');
+  await expect(viewer).toBeVisible();
   await page.waitForFunction(() => {
     const img = document.querySelector('[data-testid="photo-viewer"] img') as HTMLImageElement | null;
     return !!img && img.complete && img.naturalWidth > 0;
   });
 
-  const photoToolbar = await page.evaluate(() => {
-    const tb = document.querySelector('[data-testid="photo-viewer"] .absolute.bottom-4');
-    if (!tb) return null;
-    const r = tb.getBoundingClientRect();
-    return { left: Math.round(r.left), right: Math.round(r.right), vw: window.innerWidth };
-  });
-  expect(photoToolbar).not.toBeNull();
-  expect(photoToolbar!.left).toBeGreaterThanOrEqual(0);
-  expect(photoToolbar!.right).toBeLessThanOrEqual(photoToolbar!.vw);
+  await expect(viewer).toHaveAttribute('data-immersive', 'true');
+  const box = await viewer.boundingBox();
+  expect(box).not.toBeNull();
+  expect(box!.x).toBeLessThanOrEqual(1);
+  expect(box!.y).toBeLessThanOrEqual(1);
+  expect(Math.round(box!.width)).toBeGreaterThanOrEqual(389);
+  expect(Math.round(box!.height)).toBeGreaterThanOrEqual(840);
 
-  await page.getByTestId('photo-fullscreen').click();
-  await page.waitForTimeout(500);
-  const fsToolbar = await page.evaluate(() => {
-    const tb = document.querySelector('[data-testid="photo-viewer"] .absolute.bottom-4');
-    if (!tb) return null;
-    const r = tb.getBoundingClientRect();
-    return { left: Math.round(r.left), right: Math.round(r.right), vw: window.innerWidth };
-  });
-  expect(fsToolbar).not.toBeNull();
-  expect(fsToolbar!.left).toBeGreaterThanOrEqual(0);
-  expect(fsToolbar!.right).toBeLessThanOrEqual(fsToolbar!.vw);
-  await page.evaluate(() => document.exitFullscreen());
-  await page.waitForTimeout(300);
+  // idle chrome is minimal: counter only, no prev/next pills until tap
+  await expect(page.getByTestId('photo-prev')).toHaveCount(0);
+  await expect(page.getByTestId('photo-counter')).toBeVisible();
+
+  // tapping reveals prev/next within viewport
+  await viewer.click({ position: { x: 195, y: 420 } });
+  await expect(page.getByTestId('photo-next')).toBeVisible();
+  const nextBox = await page.getByTestId('photo-next').boundingBox();
+  expect(nextBox!.x).toBeGreaterThanOrEqual(0);
+  expect(nextBox!.x + nextBox!.width).toBeLessThanOrEqual(390);
+
+  // control sheet opens with zoom controls, then closes
+  await page.getByTestId('photo-controls').click();
+  await expect(page.getByTestId('photo-zoom-in')).toBeVisible();
+  await page.getByTestId('photo-sheet-close').click();
+  await expect(page.getByTestId('photo-zoom-in')).toHaveCount(0);
+
+  // minimize collapses immersive back to inline so header/footer are reachable
+  await page.getByTestId('photo-minimize').click();
+  await expect(viewer).toHaveAttribute('data-immersive', 'false');
+  await expect(page.getByTestId('photo-zoom-level')).toBeVisible();
+  await expect(page.getByTestId('view-toggle')).toBeVisible();
 
   // cleanup: end gig
   await page.setViewportSize({ width: 1280, height: 720 });

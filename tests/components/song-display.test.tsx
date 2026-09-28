@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SongDisplay } from '@/components/live/song-display';
 import { Tables } from '@/types/database';
@@ -121,41 +121,42 @@ describe('SongDisplay', () => {
   });
 });
 
-describe('SongDisplay photo zoom & fullscreen', () => {
-  let fullscreenElementMock: Element | null = null;
-
+describe('SongDisplay photo zoom & immersive', () => {
   const photoOnlySong = { ...mockSong, content: '' };
   const photos = [
     { id: 'p1', url: 'https://example.com/1.jpg' },
     { id: 'p2', url: 'https://example.com/2.jpg' },
   ];
 
-  beforeEach(() => {
-    fullscreenElementMock = null;
-    Object.defineProperty(HTMLElement.prototype, 'requestFullscreen', {
+  function mockViewport(matchesPhone: boolean) {
+    Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       writable: true,
-      value: vi.fn().mockResolvedValue(undefined),
+      value: vi.fn().mockImplementation((q: string) => ({
+        matches: matchesPhone,
+        media: q,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      })),
     });
-    Object.defineProperty(document, 'exitFullscreen', {
-      configurable: true,
-      writable: true,
-      value: vi.fn().mockResolvedValue(undefined),
-    });
-    Object.defineProperty(document, 'fullscreenElement', {
-      configurable: true,
-      get: () => fullscreenElementMock,
-    });
+  }
+
+  afterEach(() => {
+    // @ts-expect-error cleanup optional global
+    delete window.matchMedia;
   });
 
-  it('shows zoom toolbar with level readout in photo mode', () => {
+  it('shows zoom toolbar inline on desktop (no fullscreen button)', () => {
     render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
 
+    expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'false');
     expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
     expect(screen.getByTestId('photo-zoom-in')).toBeInTheDocument();
     expect(screen.getByTestId('photo-zoom-out')).toBeDisabled();
     expect(screen.getByTestId('photo-zoom-reset')).toBeDisabled();
-    expect(screen.getByTestId('photo-fullscreen')).toBeInTheDocument();
+    expect(screen.queryByTestId('photo-fullscreen')).not.toBeInTheDocument();
   });
 
   it('wheel zooms in and out', () => {
@@ -216,26 +217,6 @@ describe('SongDisplay photo zoom & fullscreen', () => {
     expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
   });
 
-  it('enters and exits fullscreen', async () => {
-    const user = userEvent.setup();
-    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
-    const viewer = screen.getByTestId('photo-viewer');
-
-    await user.click(screen.getByTestId('photo-fullscreen'));
-    expect(HTMLElement.prototype.requestFullscreen).toHaveBeenCalledTimes(1);
-
-    fullscreenElementMock = viewer;
-    act(() => { document.dispatchEvent(new Event('fullscreenchange')); });
-    expect(viewer).toHaveAttribute('data-fullscreen', 'true');
-
-    await user.click(screen.getByTestId('photo-fullscreen'));
-    expect(document.exitFullscreen).toHaveBeenCalledTimes(1);
-
-    fullscreenElementMock = null;
-    act(() => { document.dispatchEvent(new Event('fullscreenchange')); });
-    expect(viewer).toHaveAttribute('data-fullscreen', 'false');
-  });
-
   it('hides font size and auto scroll controls in photo mode', async () => {
     const user = userEvent.setup();
     render(<SongDisplay song={mockSong} isAdmin={true} photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]} />);
@@ -250,8 +231,29 @@ describe('SongDisplay photo zoom & fullscreen', () => {
     expect(screen.getByTestId('view-toggle')).toBeInTheDocument();
   });
 
-  it('fullscreen shows song navigation for admin and switches song', async () => {
-    const user = userEvent.setup();
+  it('renders immersive overlay on phone with title chip and controls', () => {
+    mockViewport(true);
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+
+    const viewer = screen.getByTestId('photo-viewer');
+    expect(viewer).toHaveAttribute('data-immersive', 'true');
+    expect(screen.getByTestId('photo-title-chip')).toHaveTextContent(photoOnlySong.title);
+    // zoom lives in the sheet on phone, not the idle surface
+    expect(screen.queryByTestId('photo-zoom-level')).not.toBeInTheDocument();
+    expect(screen.getByTestId('photo-controls')).toBeInTheDocument();
+  });
+
+  it('minimize chip collapses phone immersive back to inline', () => {
+    mockViewport(true);
+    render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+
+    expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'true');
+    fireEvent.click(screen.getByTestId('photo-minimize'));
+    expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'false');
+    expect(screen.getByTestId('photo-zoom-level')).toBeInTheDocument();
+  });
+
+  it('shows song navigation for admin in photo mode and switches song', () => {
     const onSongSelect = vi.fn();
     const songs = [
       { ...mockSong, id: 's1', title: 'First' },
@@ -265,27 +267,18 @@ describe('SongDisplay photo zoom & fullscreen', () => {
         photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]}
         songs={songs}
         onSongSelect={onSongSelect}
-      />
+      />,
     );
 
-    await user.click(screen.getByTestId('view-toggle'));
-    expect(screen.queryByTestId('photo-song-next')).not.toBeInTheDocument();
-
-    await user.click(screen.getByTestId('photo-fullscreen'));
-    act(() => {
-      fullscreenElementMock = screen.getByTestId('photo-viewer');
-      document.dispatchEvent(new Event('fullscreenchange'));
-    });
-
+    fireEvent.click(screen.getByTestId('view-toggle'));
     expect(screen.getByTestId('photo-song-counter')).toHaveTextContent('2/3');
-    await user.click(screen.getByTestId('photo-song-next'));
+    fireEvent.click(screen.getByTestId('photo-song-next'));
     expect(onSongSelect).toHaveBeenCalledWith('s3');
-    await user.click(screen.getByTestId('photo-song-prev'));
+    fireEvent.click(screen.getByTestId('photo-song-prev'));
     expect(onSongSelect).toHaveBeenCalledWith('s1');
   });
 
-  it('fullscreen song navigation hidden for musicians', async () => {
-    const user = userEvent.setup();
+  it('song navigation hidden for musicians in photo mode', () => {
     const songs = [
       { ...mockSong, id: 's1', title: 'First' },
       { ...mockSong, id: 's2', title: 'Second' },
@@ -297,16 +290,10 @@ describe('SongDisplay photo zoom & fullscreen', () => {
         photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]}
         songs={songs}
         onSongSelect={vi.fn()}
-      />
+      />,
     );
 
-    await user.click(screen.getByTestId('view-toggle'));
-    await user.click(screen.getByTestId('photo-fullscreen'));
-    act(() => {
-      fullscreenElementMock = screen.getByTestId('photo-viewer');
-      document.dispatchEvent(new Event('fullscreenchange'));
-    });
-
+    fireEvent.click(screen.getByTestId('view-toggle'));
     expect(screen.queryByTestId('photo-song-next')).not.toBeInTheDocument();
     expect(screen.queryByTestId('photo-song-prev')).not.toBeInTheDocument();
   });

@@ -106,6 +106,45 @@ describe('PhotoUploader', () => {
     expect(screen.getByText(/no photos yet/i)).toBeInTheDocument();
   });
 
+  it('opens the immersive viewer at the tapped thumbnail', async () => {
+    const user = userEvent.setup();
+    render(
+      <PhotoUploader
+        items={[existingItem, pendingItem]}
+        onAddFiles={vi.fn()}
+        onRemove={vi.fn()}
+        onMove={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId('photo-viewer')).not.toBeInTheDocument();
+
+    await user.click(screen.getByAltText(/photo page 2/i));
+
+    const viewer = screen.getByTestId('photo-viewer');
+    expect(viewer).toHaveAttribute('data-immersive', 'true');
+    expect(screen.getByTestId('photo-counter')).toHaveTextContent('2/2');
+    expect(screen.getByAltText('Song photo')).toHaveAttribute('src', pendingItem.url);
+  });
+
+  it('collapse closes the preview viewer', async () => {
+    const user = userEvent.setup();
+    render(
+      <PhotoUploader
+        items={[existingItem]}
+        onAddFiles={vi.fn()}
+        onRemove={vi.fn()}
+        onMove={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByAltText(/photo page 1/i));
+    expect(screen.getByTestId('photo-viewer')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('photo-minimize'));
+    expect(screen.queryByTestId('photo-viewer')).not.toBeInTheDocument();
+  });
+
   it('controls are visible on touch and hover-reveal only on hover-capable devices', () => {
     const { container } = render(
       <PhotoUploader

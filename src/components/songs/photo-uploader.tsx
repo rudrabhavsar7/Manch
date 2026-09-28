@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { ImmersivePhotoViewer } from '@/components/photos/immersive-photo-viewer';
 import { ImagePlus, X, ChevronUp, ChevronDown } from 'lucide-react';
 
 export type PhotoItem =
@@ -33,6 +34,12 @@ export function PhotoUploader({
   onMove,
 }: PhotoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+
+  const previewPhotos = items.map((item, index) => ({
+    id: item.kind === 'existing' ? item.id : `pending-${index}`,
+    url: item.url,
+  }));
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -76,7 +83,8 @@ export function PhotoUploader({
           {items.map((item, index) => (
             <div
               key={item.kind === 'existing' ? item.id : `pending-${index}`}
-              className="relative group rounded-md overflow-hidden border border-stageBorder bg-elevated aspect-[3/4]"
+              className="relative group rounded-md overflow-hidden border border-stageBorder bg-elevated aspect-[3/4] cursor-pointer"
+              onClick={() => setPreviewIndex(index)}
             >
               <img
                 src={item.url}
@@ -96,7 +104,10 @@ export function PhotoUploader({
                   disabled={disabled || index === 0}
                   aria-label="Move photo up"
                   className="[@media(hover:none)]:h-9 [@media(hover:none)]:w-9 shrink-0 h-6 w-6 text-white hover:bg-white/20"
-                  onClick={() => onMove(index, -1)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMove(index, -1);
+                  }}
                 >
                   <ChevronUp className="h-4 w-4" />
                 </Button>
@@ -107,7 +118,10 @@ export function PhotoUploader({
                   disabled={disabled || index === items.length - 1}
                   aria-label="Move photo down"
                   className="[@media(hover:none)]:h-9 [@media(hover:none)]:w-9 shrink-0 h-6 w-6 text-white hover:bg-white/20"
-                  onClick={() => onMove(index, 1)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMove(index, 1);
+                  }}
                 >
                   <ChevronDown className="h-4 w-4" />
                 </Button>
@@ -118,7 +132,10 @@ export function PhotoUploader({
                   disabled={disabled}
                   aria-label="Remove photo"
                   className="[@media(hover:none)]:h-9 [@media(hover:none)]:w-9 shrink-0 h-6 w-6 text-white hover:bg-red-500/60"
-                  onClick={() => onRemove(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRemove(index);
+                  }}
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -126,6 +143,16 @@ export function PhotoUploader({
             </div>
           ))}
         </div>
+      )}
+
+      {previewIndex !== null && (
+        <ImmersivePhotoViewer
+          photos={previewPhotos}
+          immersive
+          initialIndex={previewIndex}
+          title={`Photo ${previewIndex + 1} of ${items.length}`}
+          onCollapse={() => setPreviewIndex(null)}
+        />
       )}
     </div>
   );
