@@ -35,12 +35,32 @@ describe('AnnotationLayer', () => {
     const onDelete = vi.fn();
     const { container } = render(<AnnotationLayer lineNumber={1} annotations={mockAnnotations} onAdd={vi.fn()} onDelete={onDelete} />);
     
-    const deleteButton = container.querySelector('button.opacity-0');
+    const deleteButton = screen.getAllByRole('button').find((b) => b.querySelector('.lucide-trash-2'));
     expect(deleteButton).toBeInTheDocument();
     
     if (deleteButton) {
       fireEvent.click(deleteButton);
       expect(onDelete).toHaveBeenCalledWith('1');
     }
+  });
+
+  it('controls are visible on touch and hover-reveal only on hover-capable devices', () => {
+    const { container } = render(
+      <AnnotationLayer lineNumber={1} annotations={mockAnnotations} onAdd={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    const addButton = screen.getByTitle('Add note');
+    const deleteButton = screen.getAllByRole('button').find((b) => b.querySelector('.lucide-trash-2'));
+
+    for (const el of [addButton, deleteButton]) {
+      expect(el).toBeTruthy();
+      expect(el).toHaveClass('opacity-100');
+      expect(el).toHaveClass('[@media(hover:hover)]:opacity-0');
+      expect(el).toHaveClass('[@media(hover:hover)]:group-hover:opacity-100');
+      expect(el).toHaveClass('transition-opacity');
+    }
+
+    expect(addButton).toHaveClass('[@media(hover:none)]:p-2.5');
+    expect(deleteButton).toHaveClass('[@media(hover:none)]:p-2.5');
   });
 });

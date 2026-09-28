@@ -88,14 +88,14 @@ export function PhotoUploader({
                   New
                 </span>
               )}
-              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+              <div className="absolute inset-0 bg-black/40 opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:none)]:top-auto [@media(hover:none)]:bottom-0 [@media(hover:none)]:inset-x-0 [@media(hover:none)]:h-11 [@media(hover:none)]:bg-black/70 [@media(hover:none)]:gap-0 transition-opacity flex items-center justify-center gap-1">
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
                   disabled={disabled || index === 0}
                   aria-label="Move photo up"
-                  className="h-6 w-6 text-white hover:bg-white/20"
+                  className="[@media(hover:none)]:h-9 [@media(hover:none)]:w-9 shrink-0 h-6 w-6 text-white hover:bg-white/20"
                   onClick={() => onMove(index, -1)}
                 >
                   <ChevronUp className="h-4 w-4" />
@@ -106,7 +106,7 @@ export function PhotoUploader({
                   variant="ghost"
                   disabled={disabled || index === items.length - 1}
                   aria-label="Move photo down"
-                  className="h-6 w-6 text-white hover:bg-white/20"
+                  className="[@media(hover:none)]:h-9 [@media(hover:none)]:w-9 shrink-0 h-6 w-6 text-white hover:bg-white/20"
                   onClick={() => onMove(index, 1)}
                 >
                   <ChevronDown className="h-4 w-4" />
@@ -117,7 +117,7 @@ export function PhotoUploader({
                   variant="ghost"
                   disabled={disabled}
                   aria-label="Remove photo"
-                  className="h-6 w-6 text-white hover:bg-red-500/60"
+                  className="[@media(hover:none)]:h-9 [@media(hover:none)]:w-9 shrink-0 h-6 w-6 text-white hover:bg-red-500/60"
                   onClick={() => onRemove(index)}
                 >
                   <X className="h-4 w-4" />

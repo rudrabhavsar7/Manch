@@ -105,4 +105,31 @@ describe('PhotoUploader', () => {
     );
     expect(screen.getByText(/no photos yet/i)).toBeInTheDocument();
   });
+
+  it('controls are visible on touch and hover-reveal only on hover-capable devices', () => {
+    const { container } = render(
+      <PhotoUploader
+        items={[existingItem]}
+        onAddFiles={vi.fn()}
+        onRemove={vi.fn()}
+        onMove={vi.fn()}
+      />,
+    );
+
+    const overlay = container.querySelector('div.absolute.inset-0');
+    expect(overlay).toBeTruthy();
+    expect(overlay).toHaveClass('opacity-100');
+    expect(overlay).toHaveClass('[@media(hover:hover)]:opacity-0');
+    expect(overlay).toHaveClass('[@media(hover:hover)]:group-hover:opacity-100');
+    expect(overlay).toHaveClass('[@media(hover:none)]:top-auto');
+    expect(overlay).toHaveClass('[@media(hover:none)]:bottom-0');
+    expect(overlay).toHaveClass('[@media(hover:none)]:inset-x-0');
+    expect(overlay).toHaveClass('[@media(hover:none)]:h-11');
+
+    for (const name of [/move photo up/i, /move photo down/i, /remove photo/i]) {
+      const btn = screen.getByRole('button', { name });
+      expect(btn).toHaveClass('[@media(hover:none)]:h-9');
+      expect(btn).toHaveClass('[@media(hover:none)]:w-9');
+    }
+  });
 });
