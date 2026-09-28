@@ -297,4 +297,129 @@ describe('SongDisplay photo zoom & immersive', () => {
     expect(screen.queryByTestId('photo-song-next')).not.toBeInTheDocument();
     expect(screen.queryByTestId('photo-song-prev')).not.toBeInTheDocument();
   });
+
+  it('horizontal swipe changes song for admin in photo mode', () => {
+    mockViewport(true);
+    const onSongSelect = vi.fn();
+    const songs = [
+      { ...mockSong, id: 's1', title: 'First' },
+      { ...mockSong, id: 's2', title: 'Second' },
+      { ...mockSong, id: 's3', title: 'Third' },
+    ];
+    render(
+      <SongDisplay
+        song={songs[1]}
+        isAdmin={true}
+        photos={[
+          { id: 'p1', url: 'https://example.com/1.jpg' },
+          { id: 'p2', url: 'https://example.com/2.jpg' },
+        ]}
+        songs={songs}
+        onSongSelect={onSongSelect}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('view-toggle'));
+    const viewer = screen.getByTestId('photo-viewer');
+    fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 400 }], changedTouches: [{ clientX: 300, clientY: 400 }] });
+    fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 160, clientY: 404 }] });
+
+    expect(onSongSelect).toHaveBeenCalledWith('s3');
+    // photo stays put - swipe moves songs, not photos
+    expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+  });
+
+  it('horizontal swipe at the edge of the setlist does nothing', () => {
+    mockViewport(true);
+    const onSongSelect = vi.fn();
+    const songs = [
+      { ...mockSong, id: 's1', title: 'First' },
+      { ...mockSong, id: 's2', title: 'Second' },
+      { ...mockSong, id: 's3', title: 'Third' },
+    ];
+    render(
+      <SongDisplay
+        song={songs[2]}
+        isAdmin={true}
+        photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]}
+        songs={songs}
+        onSongSelect={onSongSelect}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('view-toggle'));
+    const viewer = screen.getByTestId('photo-viewer');
+    fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 400 }], changedTouches: [{ clientX: 300, clientY: 400 }] });
+    fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 160, clientY: 404 }] });
+
+    expect(onSongSelect).not.toHaveBeenCalled();
+  });
+
+  it('musician horizontal swipe steps photos instead of songs', () => {
+    mockViewport(true);
+    const onSongSelect = vi.fn();
+    const songs = [
+      { ...mockSong, id: 's1', title: 'First' },
+      { ...mockSong, id: 's2', title: 'Second' },
+    ];
+    render(
+      <SongDisplay
+        song={songs[0]}
+        isAdmin={false}
+        photos={[
+          { id: 'p1', url: 'https://example.com/1.jpg' },
+          { id: 'p2', url: 'https://example.com/2.jpg' },
+        ]}
+        songs={songs}
+        onSongSelect={onSongSelect}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('view-toggle'));
+    const viewer = screen.getByTestId('photo-viewer');
+    fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 400 }], changedTouches: [{ clientX: 300, clientY: 400 }] });
+    fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 160, clientY: 404 }] });
+
+    expect(onSongSelect).not.toHaveBeenCalled();
+    expect(screen.getByTestId('photo-counter')).toHaveTextContent('2/2');
+  });
+
+  it('keeps photo mode when the song changes', () => {
+    mockViewport(true);
+    const songs = [
+      { ...mockSong, id: 's1', title: 'First' },
+      { ...mockSong, id: 's2', title: 'Second' },
+    ];
+    const photos = [
+      { id: 'p1', url: 'https://example.com/1.jpg' },
+      { id: 'p2', url: 'https://example.com/2.jpg' },
+    ];
+    const props = { isAdmin: true, photos, songs, onSongSelect: vi.fn() };
+    const { rerender } = render(<SongDisplay song={songs[0]} {...props} />);
+
+    fireEvent.click(screen.getByTestId('view-toggle'));
+    expect(screen.getByTestId('photo-viewer')).toBeInTheDocument();
+
+    rerender(<SongDisplay song={songs[1]} {...props} />);
+    expect(screen.getByTestId('photo-viewer')).toBeInTheDocument();
+    expect(screen.getByTestId('photo-title-chip')).toHaveTextContent('Second');
+  });
+
+  it('resets collapsed photo state when the song changes', () => {
+    mockViewport(true);
+    const songs = [
+      { ...mockSong, id: 's1', title: 'First' },
+      { ...mockSong, id: 's2', title: 'Second' },
+    ];
+    const photos = [{ id: 'p1', url: 'https://example.com/1.jpg' }];
+    const props = { isAdmin: true, photos, songs, onSongSelect: vi.fn() };
+    const { rerender } = render(<SongDisplay song={songs[0]} {...props} />);
+
+    fireEvent.click(screen.getByTestId('view-toggle'));
+    fireEvent.click(screen.getByTestId('photo-minimize'));
+    expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'false');
+
+    rerender(<SongDisplay song={songs[1]} {...props} />);
+    expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'true');
+  });
 });

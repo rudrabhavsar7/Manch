@@ -177,6 +177,70 @@ describe('ImmersivePhotoViewer', () => {
     });
   });
 
+  describe('swipe to change song', () => {
+    it('swiping left calls onSwipeSong(1) and leaves the photo alone', () => {
+      const onSwipeSong = vi.fn();
+      render(<ImmersivePhotoViewer photos={photos} immersive={false} onSwipeSong={onSwipeSong} />);
+      const viewer = screen.getByTestId('photo-viewer');
+
+      fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 400 }], changedTouches: [{ clientX: 300, clientY: 400 }] });
+      fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 180, clientY: 402 }] });
+
+      expect(onSwipeSong).toHaveBeenCalledTimes(1);
+      expect(onSwipeSong).toHaveBeenCalledWith(1);
+      expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+    });
+
+    it('swiping right calls onSwipeSong(-1)', () => {
+      const onSwipeSong = vi.fn();
+      render(<ImmersivePhotoViewer photos={photos} immersive={false} onSwipeSong={onSwipeSong} />);
+      const viewer = screen.getByTestId('photo-viewer');
+
+      fireEvent.touchStart(viewer, { touches: [{ clientX: 180, clientY: 400 }], changedTouches: [{ clientX: 180, clientY: 400 }] });
+      fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 300, clientY: 402 }] });
+
+      expect(onSwipeSong).toHaveBeenCalledWith(-1);
+      expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+    });
+
+    it('ignores horizontal swipe while the control sheet is open', () => {
+      const onSwipeSong = vi.fn();
+      render(<ImmersivePhotoViewer photos={photos} immersive onSwipeSong={onSwipeSong} />);
+      const viewer = screen.getByTestId('photo-viewer');
+      fireEvent.click(screen.getByTestId('photo-controls'));
+
+      fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 400 }], changedTouches: [{ clientX: 300, clientY: 400 }] });
+      fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 180, clientY: 402 }] });
+
+      expect(onSwipeSong).not.toHaveBeenCalled();
+    });
+
+    it('ignores horizontal swipe while zoomed (pans instead)', () => {
+      const onSwipeSong = vi.fn();
+      render(<ImmersivePhotoViewer photos={photos} immersive={false} onSwipeSong={onSwipeSong} />);
+      const viewer = screen.getByTestId('photo-viewer');
+
+      fireEvent.wheel(viewer, { deltaY: -100 });
+      expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('110%');
+
+      fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 400 }], changedTouches: [{ clientX: 300, clientY: 400 }] });
+      fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 180, clientY: 402 }] });
+
+      expect(onSwipeSong).not.toHaveBeenCalled();
+      expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+    });
+
+    it('without onSwipeSong, horizontal swipe still steps the photo', () => {
+      render(<ImmersivePhotoViewer photos={photos} immersive={false} />);
+      const viewer = screen.getByTestId('photo-viewer');
+
+      fireEvent.touchStart(viewer, { touches: [{ clientX: 300, clientY: 400 }], changedTouches: [{ clientX: 300, clientY: 400 }] });
+      fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 180, clientY: 402 }] });
+
+      expect(screen.getByTestId('photo-counter')).toHaveTextContent('2/2');
+    });
+  });
+
   describe('photo navigation', () => {
     it('prev/next changes the photo and counter', () => {
       render(<ImmersivePhotoViewer photos={photos} immersive={false} />);

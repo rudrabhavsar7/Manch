@@ -2,6 +2,7 @@ import { test, expect, Page } from '@playwright/test';
 
 const TS = Date.now();
 const LONG_TITLE = `Mobile Guard Song ${TS}`;
+const SONG2_TITLE = `Mobile Guard Song Two ${TS}`;
 const SETLIST_NAME = `Mobile Guard Setlist ${TS}`;
 const GIG_TITLE = `Mobile Guard Gig ${TS}`;
 
@@ -28,7 +29,7 @@ async function login(page: Page) {
   await page.waitForURL('**/dashboard');
 }
 
-async function buildLiveGig(page: Page) {
+async function createSong(page: Page, title: string) {
   await page.goto('/songs/new');
   await page.waitForLoadState('networkidle');
   await page.getByLabel(/Lyrics & Chords/i).fill(LONG_CONTENT);
@@ -38,16 +39,50 @@ async function buildLiveGig(page: Page) {
   ]);
   await expect(page.getByText('New', { exact: true })).toHaveCount(2);
   const titleInput = page.getByLabel(/^Title/);
-  await titleInput.fill(LONG_TITLE);
-  await expect(titleInput).toHaveValue(LONG_TITLE);
+  await titleInput.fill(title);
+  await expect(titleInput).toHaveValue(title);
   await page.getByRole('button', { name: /save song/i }).click();
   await page.waitForURL('**/songs');
+}
+
+async function swipeSong(page: Page, direction: 'left' | 'right') {
+  await page.evaluate((dir) => {
+    const el = document.querySelector('[data-testid="photo-viewer"]');
+    if (!el) throw new Error('photo-viewer not found');
+    const startX = dir === 'left' ? 300 : 100;
+    const endX = dir === 'left' ? 100 : 300;
+    const touch = (x: number) =>
+      new Touch({ identifier: 1, target: el as HTMLElement, clientX: x, clientY: 420 });
+    el.dispatchEvent(
+      new TouchEvent('touchstart', {
+        touches: [touch(startX)],
+        changedTouches: [touch(startX)],
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    el.dispatchEvent(
+      new TouchEvent('touchend', {
+        touches: [],
+        changedTouches: [touch(endX)],
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+  }, direction);
+}
+
+async function buildLiveGig(page: Page) {
+  await createSong(page, LONG_TITLE);
+  await createSong(page, SONG2_TITLE);
 
   await page.goto('/setlists/new');
   await page.waitForLoadState('networkidle');
-  await page.getByRole('button', { name: /add song/i }).click();
-  await page.getByLabel('Search songs').fill(LONG_TITLE);
-  await page.getByRole('button', { name: LONG_TITLE }).click({ force: true, timeout: 10000 });
+  for (const title of [LONG_TITLE, SONG2_TITLE]) {
+    await page.getByRole('button', { name: /add song/i }).click();
+    await page.getByLabel('Search songs').fill(title);
+    await page.getByRole('button', { name: title }).click({ force: true, timeout: 10000 });
+  }
   const nameInput = page.getByPlaceholder('e.g. Friday Night Live');
   await nameInput.fill(SETLIST_NAME);
   await expect(nameInput).toHaveValue(SETLIST_NAME);
@@ -122,6 +157,18 @@ test('live view fits a 390px phone without horizontal overflow', async ({ page }
   expect(box!.y).toBeLessThanOrEqual(1);
   expect(Math.round(box!.width)).toBeGreaterThanOrEqual(389);
   expect(Math.round(box!.height)).toBeGreaterThanOrEqual(840);
+
+  // horizontal swipe changes song and keeps photo mode
+  await swipeSong(page, 'left');
+  await expect(page.getByTestId('photo-title-chip')).toHaveText(SONG2_TITLE);
+  await expect(viewer).toHaveAttribute('data-immersive', 'true');
+  await swipeSong(page, 'right');
+  await expect(page.getByTestId('photo-title-chip')).toHaveText(LONG_TITLE);
+  await expect(viewer).toHaveAttribute('data-immersive', 'true');
+  await page.waitForFunction(() => {
+    const img = document.querySelector('[data-testid="photo-viewer"] img') as HTMLImageElement | null;
+    return !!img && img.complete && img.naturalWidth > 0;
+  });
 
   // idle chrome is minimal: counter only, no prev/next pills until tap
   await expect(page.getByTestId('photo-prev')).toHaveCount(0);

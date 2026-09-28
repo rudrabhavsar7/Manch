@@ -45,7 +45,6 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
   const isPhone = useMediaQuery('(max-width: 767px)');
 
   useEffect(() => {
-    setViewMode('lyrics');
     setPhotoCollapsed(false);
   }, [song?.id]);
 
@@ -129,6 +128,13 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
       </Button>
     </>
   ) : undefined;
+
+  const swipeSong = showSongNav
+    ? (dir: -1 | 1) => {
+        const target = songs[songIndex + dir];
+        if (target) onSongSelect?.(target.id);
+      }
+    : undefined;
 
   const sheetExtra = immersive ? (
     <>
@@ -248,6 +254,7 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
           onCollapse={isPhone ? () => setPhotoCollapsed(true) : undefined}
           onExpand={isPhone && photoCollapsed ? () => setPhotoCollapsed(false) : undefined}
           songNav={songNav}
+          onSwipeSong={swipeSong}
           sheetExtra={sheetExtra}
         />
       ) : (

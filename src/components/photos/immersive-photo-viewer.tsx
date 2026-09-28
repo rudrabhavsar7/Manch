@@ -47,6 +47,7 @@ interface ImmersivePhotoViewerProps {
   onExpand?: () => void;
   initialIndex?: number;
   onIndexChange?: (index: number) => void;
+  onSwipeSong?: (dir: -1 | 1) => void;
   sheetExtra?: React.ReactNode;
   songNav?: React.ReactNode;
   className?: string;
@@ -61,6 +62,7 @@ export function ImmersivePhotoViewer({
   onExpand,
   initialIndex = 0,
   onIndexChange,
+  onSwipeSong,
   sheetExtra,
   songNav,
   className = '',
@@ -222,7 +224,13 @@ export function ImmersivePhotoViewer({
           return;
         } else if (!isTap && adx >= SWIPE_THRESHOLD && adx > ady && scale <= PHOTO_MIN_SCALE) {
           swipedRef.current = true;
-          if (photos.length > 1) goTo(dx < 0 ? safeIndex + 1 : safeIndex - 1);
+          if (!sheetOpen) {
+            if (onSwipeSong) {
+              onSwipeSong(dx < 0 ? 1 : -1);
+            } else if (photos.length > 1) {
+              goTo(dx < 0 ? safeIndex + 1 : safeIndex - 1);
+            }
+          }
           return;
         }
       }
@@ -235,7 +243,7 @@ export function ImmersivePhotoViewer({
         lastTapRef.current = now;
       }
     },
-    [goTo, onCollapse, photos.length, safeIndex, scale, sheetOpen],
+    [goTo, onCollapse, onSwipeSong, photos.length, safeIndex, scale, sheetOpen],
   );
 
   const handleClick = useCallback(() => {
