@@ -97,4 +97,21 @@ describe('AdminControls', () => {
 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/dashboard'));
   });
+
+  it('fits narrow phone screens', () => {
+    render(<AdminControls songIds={['a', 'b']} onSend={vi.fn()} />);
+
+    const bar = screen.getByTestId('admin-prev').closest('[class*="justify-between"]') as HTMLElement;
+    expect(bar).toHaveClass('flex-wrap');
+    expect(bar).toHaveClass('min-h-[56px]');
+    expect(bar).not.toHaveClass('h-[56px]');
+
+    const prev = screen.getByTestId('admin-prev');
+    expect(prev).toHaveClass('sm:w-24');
+    expect(prev).not.toHaveClass('w-24');
+
+    const next = screen.getByTestId('admin-next');
+    expect(next).toHaveClass('sm:w-24');
+    expect(next).not.toHaveClass('w-24');
+  });
 });

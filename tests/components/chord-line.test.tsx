@@ -27,4 +27,16 @@ describe('ChordLine', () => {
     render(<ChordLine segments={segments} />);
     expect(screen.getByText('--- Chorus ---')).toBeInTheDocument();
   });
+
+  it('wraps long lines instead of clipping on narrow screens', () => {
+    const longText = 'Yeh duniya ek khel khilona aur yeh zamana hai '.repeat(8).trim();
+    render(<ChordLine segments={[{ chord: 'G', lyrics: longText }]} />);
+
+    const lyric = screen.getByText(longText);
+    expect(lyric).toHaveClass('whitespace-pre-wrap');
+    expect(lyric).toHaveClass('break-words');
+
+    const chord = screen.getByText('G');
+    expect(chord).toHaveClass('whitespace-pre-wrap');
+  });
 });

@@ -33,11 +33,11 @@ export function ChordLine({ segments }: ChordLineProps) {
       {segments.map((seg, i) => (
         <span key={i} className="inline-flex flex-col">
           {hasChords && (
-            <span className="font-mono text-chord font-semibold text-[0.85em] leading-tight min-h-[1.2em] whitespace-pre select-none">
+            <span className="font-mono text-chord font-semibold text-[0.85em] leading-tight min-h-[1.2em] whitespace-pre-wrap break-words select-none">
               {seg.chord ?? ''}
             </span>
           )}
-          <span className="font-sans text-textPrimary leading-normal whitespace-pre">
+          <span className="font-sans text-textPrimary leading-normal whitespace-pre-wrap break-words">
             {seg.lyrics}
           </span>
         </span>

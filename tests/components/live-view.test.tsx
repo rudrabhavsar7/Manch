@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { LiveView } from '@/components/live/live-view';
 import { useGigStore } from '@/stores/gig-store';
 import { Tables } from '@/types/database';
@@ -13,7 +14,11 @@ vi.mock('next/navigation', () => ({
 
 // Mock child components
 vi.mock('@/components/live/setlist-sidebar', () => ({
-  SetlistSidebar: () => <div data-testid="mock-setlist-sidebar" />
+  SetlistSidebar: (props: any) => (
+    <div data-testid="mock-setlist-sidebar">
+      <button data-testid="mock-select-song" onClick={() => props.onSongSelect?.('song-1')} />
+    </div>
+  ),
 }));
 vi.mock('@/components/live/song-display', () => ({
   SongDisplay: () => <div data-testid="mock-song-display" />
@@ -170,5 +175,44 @@ describe('LiveView', () => {
     act(() => { useGigStore.getState().setStatus('ended'); });
 
     expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it('mobile setlist drawer closes after selecting a song', async () => {
+    const user = userEvent.setup();
+    render(
+      <LiveView
+        gig={mockGig}
+        songs={mockSongs}
+        songIds={[]}
+        myRole="admin"
+        userId="user-1"
+      />
+    );
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Open setlist'));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toBeInTheDocument();
+
+    await user.click(within(dialog).getByTestId('mock-select-song'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('shows gig PIN to admin on all screen sizes', () => {
+    const { container } = render(
+      <LiveView
+        gig={mockGig}
+        songs={mockSongs}
+        songIds={[]}
+        myRole="admin"
+        userId="user-1"
+      />
+    );
+
+    const pin = container.textContent?.match(/PIN: 1234/);
+    expect(pin).not.toBeNull();
+    const badge = screen.getByText('PIN: 1234');
+    expect(badge).not.toHaveClass('hidden');
   });
 });

@@ -7,7 +7,7 @@ export function FontSizeControl() {
   const setFontSize = useUIStore((state) => state.setFontSize);
 
   return (
-    <div className="flex items-center space-x-4 w-[200px]">
+    <div className="flex items-center space-x-2 sm:space-x-4 w-28 sm:w-[200px]">
       <Type className="w-4 h-4 text-muted-foreground" />
       <Slider
         min={12}

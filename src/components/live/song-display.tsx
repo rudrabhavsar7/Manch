@@ -205,10 +205,10 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
 
   return (
     <div className="flex-1 flex flex-col h-full bg-stage overflow-hidden relative">
-      <div className="p-4 border-b border-border bg-surface flex flex-wrap items-center justify-between gap-4 z-10">
-        <div>
-          <h1 className="text-2xl font-bold">{song.title}</h1>
-          <div className="flex items-center space-x-3 mt-1 text-muted-foreground">
+      <div className="p-3 sm:p-4 border-b border-border bg-surface flex flex-wrap items-center justify-between gap-3 sm:gap-4 z-10">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-2xl font-bold truncate">{song.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-muted-foreground text-xs sm:text-sm">
             <span>{song.artist}</span>
             {song.bpm && (
               <>
@@ -224,7 +224,7 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
             )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-4 bg-elevated p-2 rounded-lg">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 bg-elevated p-1.5 sm:p-2 rounded-lg">
           {showToggle && (
             <Button
               size="sm"
@@ -293,7 +293,7 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
             }}
             draggable={false}
           />
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-elevated border border-stageBorder rounded-lg px-3 py-2 z-10">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 bg-elevated border border-stageBorder rounded-lg px-2 sm:px-3 py-1.5 sm:py-2 z-10">
             <Button
               size="icon"
               variant="ghost"
@@ -334,7 +334,8 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
                 setOffset({ x: 0, y: 0 });
               }}
             >
-              <Scan className="h-4 w-4 mr-1" /> Fit
+              <Scan className="h-4 w-4 sm:mr-1" />
+              <span className="hidden sm:inline">Fit</span>
             </Button>
             <div className="w-px h-5 bg-border mx-1" />
             {showSongNav && (

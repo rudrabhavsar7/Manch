@@ -68,36 +68,40 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
   }, [gigId, endGig, setStatus, onSend, router]);
 
   return (
-    <div className="flex items-center justify-between w-full p-2 h-[56px] bg-surface border-t border-border" suppressHydrationWarning>
-      <div className="flex items-center space-x-4">
+    <div className="flex items-center justify-between w-full p-2 min-h-[56px] flex-wrap gap-y-1 bg-surface border-t border-border" suppressHydrationWarning>
+      <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4">
         <Button 
           variant="outline" 
           onClick={handlePrev} 
           disabled={!hasPrev}
-          className="w-24"
+          className="w-auto px-2 sm:w-24 sm:px-4 shrink-0"
+          aria-label="Previous song"
           data-testid="admin-prev"
         >
-          <ChevronLeft className="w-4 h-4 mr-2" />
-          Prev
+          <ChevronLeft className="w-4 h-4 sm:mr-2" />
+          <span className="hidden sm:inline">Prev</span>
         </Button>
-        <div className="text-sm font-medium w-16 text-center">
+        <div className="text-sm font-medium w-12 sm:w-16 text-center shrink-0">
           {currentIndex >= 0 ? currentIndex + 1 : 0} / {total}
         </div>
         <Button 
           variant="outline" 
           onClick={handleNext} 
           disabled={!hasNext}
-          className="w-24"
+          className="w-auto px-2 sm:w-24 sm:px-4 shrink-0"
+          aria-label="Next song"
           data-testid="admin-next"
         >
-          Next
-          <ChevronRight className="w-4 h-4 ml-2" />
+          <span className="hidden sm:inline">Next</span>
+          <ChevronRight className="w-4 h-4 sm:ml-2" />
         </Button>
       </div>
       
       <Button 
         variant="destructive" 
         onClick={handleEndGig}
+        className="shrink-0 px-2 sm:px-4"
+        aria-label="End gig"
         data-testid="admin-end-gig"
       >
         <Square className="w-4 h-4 mr-2 fill-current" />

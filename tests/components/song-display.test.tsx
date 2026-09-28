@@ -41,7 +41,7 @@ describe('SongDisplay', () => {
 
   it('renders song details and controls', () => {
     render(<SongDisplay song={mockSong} isAdmin={true} />);
-    expect(screen.getByText('Wonderwall')).toBeInTheDocument();
+    expect(screen.getByText('Wonderwall')).toHaveClass('truncate');
     expect(screen.getByText('Oasis')).toBeInTheDocument();
     expect(screen.getByText('88 BPM')).toBeInTheDocument();
     expect(screen.getByText('Em')).toBeInTheDocument();

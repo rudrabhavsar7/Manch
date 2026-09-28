@@ -39,6 +39,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
   const router = useRouter();
   
   const [showMembers, setShowMembers] = useState(false);
+  const [setlistOpen, setSetlistOpen] = useState(false);
   const isAdmin = myRole === 'admin' || myRole === 'co-admin';
   const isHost = myRole === 'admin';
 
@@ -76,6 +77,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
     if (isAdmin) {
       setActiveSongId(songId);
       send({ type: 'SONG_CHANGE', songId, timestamp: Date.now() });
+      setSetlistOpen(false);
     }
   };
 
@@ -84,9 +86,9 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
       {/* Top Header */}
       <header className="h-[48px] flex items-center justify-between px-4 bg-surface border-b border-border shrink-0">
         <div className="flex items-center space-x-4">
-          <Sheet>
+          <Sheet open={setlistOpen} onOpenChange={setSetlistOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden">
+              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open setlist">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -100,7 +102,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
           </div>
           
           {isAdmin && (
-            <Badge variant="outline" className="hidden sm:inline-flex bg-background font-mono">
+            <Badge variant="outline" className="inline-flex bg-background font-mono text-[10px] sm:text-xs">
               PIN: {gig.pin}
             </Badge>
           )}
