@@ -15,14 +15,13 @@ const mockAuthStore = vi.hoisted(() => {
     initialize: vi.fn(),
   }));
   
-  const hookFn = vi.fn((selector) => selector({
+  const baseFn = (selector: any) => selector({
     user: { id: 'test-user', email: 'test@test.com' },
     loading: false,
     initialize: vi.fn(),
     getState,
-  }));
-  
-  hookFn.getState = getState;
+  });
+  const hookFn = Object.assign(vi.fn(baseFn), { getState });
   
   return hookFn;
 });

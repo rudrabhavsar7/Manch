@@ -16,8 +16,14 @@ const LONG_CONTENT = [
 
 async function login(page: Page) {
   await page.goto('/auth/login');
-  await page.getByLabel('Email').fill('rudra@manch.app');
-  await page.getByLabel('Password').fill('password123');
+  const email = page.getByLabel('Email');
+  const password = page.getByLabel('Password');
+  await expect(async () => {
+    await email.fill('rudra@manch.app');
+    await password.fill('password123');
+    await expect(email).toHaveValue('rudra@manch.app');
+    await expect(password).toHaveValue('password123');
+  }).toPass({ timeout: 15000 });
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.waitForURL('**/dashboard');
 }
