@@ -6,9 +6,14 @@ export default async function JoinGigPage() {
   const supabase = await createClient();
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
   if (!user) {
+    console.warn(
+      '[join-page-redirect]',
+      JSON.stringify({ authError: authError?.message ?? null }),
+    );
     redirect('/auth/login');
     return null;
   }

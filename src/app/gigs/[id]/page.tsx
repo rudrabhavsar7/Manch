@@ -21,6 +21,10 @@ export default async function GigPage({ params }: GigPageProps) {
   const claims = claimsResult.data?.claims;
 
   if (!claims) {
+    console.warn(
+      '[gig-page-redirect]',
+      JSON.stringify({ claimsError: claimsResult.error?.message ?? null }),
+    );
     redirect('/auth/login');
   }
 
