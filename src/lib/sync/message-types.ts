@@ -3,7 +3,7 @@ export type TransportType = 'webrtc' | 'supabase' | 'none';
 export type SyncMessage =
   | { type: 'SONG_CHANGE'; songId: string; timestamp: number }
   | { type: 'SCROLL_SYNC'; position: number; percentage: number; timestamp: number }
-  | { type: 'SETLIST_UPDATE'; songIds: string[]; timestamp: number }
+  | { type: 'SETLIST_UPDATE'; songIds: string[]; setlistId: string; timestamp: number }
   | { type: 'MEMBER_ROLE'; userId: string; role: 'co-admin' | 'musician'; timestamp: number }
   | { type: 'MEMBER_JOIN'; userId: string; role?: 'admin' | 'co-admin' | 'musician'; timestamp: number }
   | { type: 'GIG_STATUS'; status: 'live' | 'paused' | 'ended'; timestamp: number }

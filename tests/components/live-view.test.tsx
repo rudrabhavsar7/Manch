@@ -74,7 +74,7 @@ describe('LiveView', () => {
       <LiveView 
         gig={mockGig} 
         songs={mockSongs} 
-        songIds={[]} 
+        songIds={[]} queue={[]} 
         myRole="admin" 
         userId="user-1" 
       />
@@ -93,7 +93,7 @@ describe('LiveView', () => {
       <LiveView 
         gig={mockGig} 
         songs={mockSongs} 
-        songIds={[]} 
+        songIds={[]} queue={[]} 
         myRole="admin" 
         userId="user-1" 
       />
@@ -108,7 +108,7 @@ describe('LiveView', () => {
       <LiveView 
         gig={mockGig} 
         songs={mockSongs} 
-        songIds={[]} 
+        songIds={[]} queue={[]} 
         myRole="musician" 
         userId="user-1" 
       />
@@ -124,7 +124,7 @@ describe('LiveView', () => {
       <LiveView 
         gig={mockGig} 
         songs={mockSongs} 
-        songIds={[]} 
+        songIds={[]} queue={[]} 
         myRole="admin" 
         userId="user-1" 
       />
@@ -150,7 +150,7 @@ describe('LiveView', () => {
       <LiveView
         gig={mockGig}
         songs={mockSongs}
-        songIds={[]}
+        songIds={[]} queue={[]}
         myRole="musician"
         userId="user-2"
       />
@@ -166,7 +166,7 @@ describe('LiveView', () => {
       <LiveView
         gig={mockGig}
         songs={mockSongs}
-        songIds={[]}
+        songIds={[]} queue={[]}
         myRole="admin"
         userId="user-1"
       />
@@ -183,7 +183,7 @@ describe('LiveView', () => {
       <LiveView
         gig={mockGig}
         songs={mockSongs}
-        songIds={[]}
+        songIds={[]} queue={[]}
         myRole="admin"
         userId="user-1"
       />
@@ -204,7 +204,7 @@ describe('LiveView', () => {
       <LiveView
         gig={mockGig}
         songs={mockSongs}
-        songIds={[]}
+        songIds={[]} queue={[]}
         myRole="admin"
         userId="user-1"
       />
@@ -216,3 +216,4 @@ describe('LiveView', () => {
     expect(badge).not.toHaveClass('hidden');
   });
 });
+

@@ -3,13 +3,17 @@ import { useGigStore } from '../stores/gig-store';
 import { useSyncStore } from '../stores/sync-store';
 import { SyncEngine } from '../lib/sync/sync-engine';
 import { SyncMessage } from '../lib/sync/message-types';
+import { createClient } from '../lib/supabase/client';
+import { fetchSongsByIds } from '../lib/live/setlist-queue';
+import { CacheManager } from '../lib/offline/cache-manager';
 
 export function useSync() {
   const engineRef = useRef<SyncEngine | null>(null);
-  
-  const { setActiveSongId, setSongIds, setStatus, updateMemberRole, setScrollPosition } = useGigStore();
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+
+  const { setActiveSongId, setStatus, updateMemberRole, setScrollPosition } = useGigStore();
   const { setConnectionStatus, setTransport } = useSyncStore();
-  
+
   useEffect(() => {
     engineRef.current = new SyncEngine();
     return () => {
@@ -17,14 +21,35 @@ export function useSync() {
     };
   }, []);
 
+  const syncSongs = useCallback(async (songIds: string[], setlistId?: string) => {
+    const state = useGigStore.getState();
+    const changed = JSON.stringify(songIds) !== JSON.stringify(state.songIds);
+    let songs = state.songs;
+    if (changed) {
+      supabaseRef.current ??= createClient();
+      try {
+        songs = await fetchSongsByIds(supabaseRef.current, songIds);
+      } catch (err) {
+        console.error('Failed to fetch songs for setlist sync:', err);
+      }
+    }
+    useGigStore.getState().applySetlistUpdate({ songIds, songs, setlistId });
+    const gigId = useGigStore.getState().gigId;
+    if (gigId && setlistId) {
+      CacheManager.cacheGigState(gigId, setlistId, songIds).catch((err) =>
+        console.error('Failed to cache gig state:', err),
+      );
+    }
+  }, []);
+
   const connect = useCallback(async (gigIdToConnect: string, userId: string, isHost: boolean) => {
     if (!engineRef.current) return;
-    
+
     engineRef.current.onStatusChange((status, transport) => {
       setConnectionStatus(status);
       setTransport(transport);
     });
-    
+
     engineRef.current.onMessage((msg: SyncMessage) => {
       switch (msg.type) {
         case 'SCROLL_SYNC':
@@ -34,7 +59,7 @@ export function useSync() {
           setActiveSongId(msg.songId);
           break;
         case 'SETLIST_UPDATE':
-          setSongIds(msg.songIds);
+          syncSongs(msg.songIds, msg.setlistId);
           break;
         case 'MEMBER_ROLE':
           updateMemberRole(msg.userId, msg.role);
@@ -65,14 +90,14 @@ export function useSync() {
           break;
         case 'GIG_STATE_RESPONSE':
           setActiveSongId(msg.activeSongId);
-          setSongIds(msg.songIds);
           setStatus(msg.status);
+          syncSongs(msg.songIds);
           break;
       }
     });
-    
+
     await engineRef.current.connect(gigIdToConnect, userId, isHost);
-    
+
     engineRef.current.send({
       type: 'MEMBER_JOIN',
       userId,
@@ -83,7 +108,7 @@ export function useSync() {
     if (!isHost) {
       engineRef.current.send({ type: 'GIG_STATE_REQUEST', from: userId, timestamp: Date.now() });
     }
-  }, [setActiveSongId, setSongIds, setStatus, updateMemberRole, setScrollPosition, setConnectionStatus, setTransport]);
+  }, [setActiveSongId, setStatus, updateMemberRole, setScrollPosition, setConnectionStatus, setTransport, syncSongs]);
 
   const disconnect = useCallback(() => {
     engineRef.current?.disconnect();

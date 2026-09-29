@@ -95,4 +95,63 @@ describe('SetlistSidebar', () => {
     expect(screen.getByTestId('setlist-item-2')).toBeInTheDocument();
     expect(screen.queryByText('No songs match')).not.toBeInTheDocument();
   });
+
+  describe('setlist queue', () => {
+    const queue = [
+      { id: 'q1', setlistId: 'sl-1', name: 'Opening' },
+      { id: 'q2', setlistId: 'sl-2', name: 'Timli Set' },
+    ];
+
+    it('renders queue tabs for admin and forwards switch callback', () => {
+      const onSwitch = vi.fn();
+      render(
+        <SetlistSidebar
+          songs={mockSongs}
+          isAdmin={true}
+          queue={queue}
+          activeSetlistId="sl-1"
+          onSwitchSetlist={onSwitch}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Timli Set' }));
+      expect(onSwitch).toHaveBeenCalledWith(queue[1]);
+    });
+
+    it('forwards remove and add callbacks for admin', () => {
+      const onRemove = vi.fn();
+      const onAdd = vi.fn();
+      render(
+        <SetlistSidebar
+          songs={mockSongs}
+          isAdmin={true}
+          queue={queue}
+          activeSetlistId="sl-1"
+          onRemoveSetlist={onRemove}
+          onAddSetlist={onAdd}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'Remove Timli Set' }));
+      expect(onRemove).toHaveBeenCalledWith(queue[1]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Add setlist' }));
+      expect(onAdd).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides queue tabs for musicians but shows active setlist name', () => {
+      render(
+        <SetlistSidebar
+          songs={mockSongs}
+          isAdmin={false}
+          queue={queue}
+          activeSetlistId="sl-1"
+          activeSetName="Opening"
+        />
+      );
+
+      expect(screen.queryByTestId('queue-tabs')).not.toBeInTheDocument();
+      expect(screen.getByText('Opening')).toBeInTheDocument();
+    });
+  });
 });

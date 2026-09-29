@@ -92,8 +92,7 @@ async function buildLiveGig(page: Page) {
   await page.goto('/gigs/new');
   await page.waitForLoadState('networkidle');
   await page.getByPlaceholder('Friday Night at Blue Frog').fill(GIG_TITLE);
-  await page.getByRole('combobox').click();
-  await page.getByRole('option', { name: SETLIST_NAME }).click();
+  await page.getByRole('checkbox', { name: SETLIST_NAME }).click();
   await page.getByRole('button', { name: /create & go live/i }).click();
   await page.waitForURL(/\/gigs\/[0-9a-f-]+/);
   await page.waitForLoadState('networkidle');

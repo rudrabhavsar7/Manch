@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Tables } from '@/types/database';
-import { useGigStore } from '@/stores/gig-store';
+import { useGigStore, type QueueItem } from '@/stores/gig-store';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { QueueTabs } from './queue-tabs';
 import { cn } from '@/lib/utils';
 
 type Song = Tables<'songs'>;
@@ -12,11 +13,28 @@ interface SetlistSidebarProps {
   songs: Song[];
   onSongSelect?: (songId: string) => void;
   isAdmin: boolean;
+  queue?: QueueItem[];
+  activeSetlistId?: string | null;
+  activeSetName?: string;
+  onSwitchSetlist?: (item: QueueItem) => void;
+  onRemoveSetlist?: (item: QueueItem) => void;
+  onAddSetlist?: () => void;
 }
 
-export function SetlistSidebar({ songs, onSongSelect, isAdmin }: SetlistSidebarProps) {
-  const activeSongId = useGigStore((state) => state.activeSongId);
+export function SetlistSidebar({
+  songs,
+  onSongSelect,
+  isAdmin,
+  queue,
+  activeSetlistId,
+  activeSetName,
+  onSwitchSetlist,
+  onRemoveSetlist,
+  onAddSetlist,
+}: SetlistSidebarProps) {
+  const storeActiveSongId = useGigStore((state) => state.activeSongId);
   const [query, setQuery] = useState('');
+  const activeSongId = storeActiveSongId;
 
   const normalizedQuery = query.trim().toLowerCase();
   const indexed = songs.map((song, index) => ({ song, index }));
@@ -31,7 +49,22 @@ export function SetlistSidebar({ songs, onSongSelect, isAdmin }: SetlistSidebarP
     <div className="flex flex-col h-full bg-surface border-r border-border">
       <div className="p-4 border-b border-border">
         <h2 className="font-semibold text-lg">Setlist</h2>
+        {activeSetName && (
+          <p className="text-xs text-muted-foreground truncate" data-testid="active-setlist-name">
+            {activeSetName}
+          </p>
+        )}
       </div>
+      {isAdmin && queue && (
+        <QueueTabs
+          isAdmin={isAdmin}
+          activeSetlistId={activeSetlistId ?? null}
+          items={queue}
+          onSwitch={onSwitchSetlist}
+          onRemove={onRemoveSetlist}
+          onAdd={onAddSetlist}
+        />
+      )}
       {isAdmin && (
         <div className="p-3 border-b border-border">
           <Input

@@ -34,6 +34,7 @@ const mockGetUser = vi.fn();
 const mockGigsInsert = vi.fn();
 const mockMembersInsert = vi.fn();
 const mockSetlistsOrder = vi.fn();
+const mockGigSetlistsInsert = vi.fn();
 
 const mockFrom = vi.fn((table: string) => {
   if (table === 'setlists') {
@@ -53,6 +54,11 @@ const mockFrom = vi.fn((table: string) => {
   if (table === 'gig_members') {
     return {
       insert: mockMembersInsert,
+    };
+  }
+  if (table === 'gig_setlists') {
+    return {
+      insert: mockGigSetlistsInsert,
     };
   }
   return {};
@@ -101,6 +107,15 @@ describe('CreateGigForm', () => {
     }));
 
     mockMembersInsert.mockResolvedValue({ error: null });
+
+    mockGigSetlistsInsert.mockImplementation((payload: Record<string, unknown>) => ({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({
+          data: { id: `gs-${payload.position}`, ...payload },
+          error: null,
+        }),
+      }),
+    }));
   });
 
   it('renders form inputs and submit button', async () => {
@@ -108,7 +123,8 @@ describe('CreateGigForm', () => {
 
     expect(screen.getByText('Create Gig')).toBeInTheDocument();
     expect(screen.getByLabelText(/gig name/i)).toBeInTheDocument();
-    expect(await screen.findByRole('combobox')).toBeInTheDocument();
+    expect(await screen.findByRole('checkbox', { name: 'Friday Night Set' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Acoustic Set' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /create & go live/i })).toBeInTheDocument();
   });
 
@@ -153,19 +169,15 @@ describe('CreateGigForm', () => {
     expect(mockGigsInsert).not.toHaveBeenCalled();
   });
 
-  it('submits form, inserts gig and member, and navigates to live gig page', async () => {
+  it('submits form, inserts gig, member and queue row, and navigates to live gig page', async () => {
     const user = userEvent.setup();
     render(<CreateGigForm />);
 
     const nameInput = screen.getByLabelText(/gig name/i);
     await user.type(nameInput, 'Friday Night at Blue Frog');
 
-    // Select setlist
-    const selectTrigger = screen.getByRole('combobox');
-    await user.click(selectTrigger);
-
-    const option = await screen.findByRole('option', { name: 'Friday Night Set' });
-    await user.click(option);
+    // Select setlist via checkbox
+    await user.click(await screen.findByRole('checkbox', { name: 'Friday Night Set' }));
 
     const submitBtn = screen.getByRole('button', { name: /create & go live/i });
     await user.click(submitBtn);
@@ -188,6 +200,42 @@ describe('CreateGigForm', () => {
           role: 'admin',
         }),
       );
+      expect(mockGigSetlistsInsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          gig_id: 'new-gig-123',
+          setlist_id: 'setlist-1',
+          setlist_name: 'Friday Night Set',
+          position: 0,
+        }),
+      );
+      expect(mockPush).toHaveBeenCalledWith('/gigs/new-gig-123');
+    });
+  });
+
+  it('queues multiple setlists in selection order, first becomes active', async () => {
+    const user = userEvent.setup();
+    render(<CreateGigForm />);
+
+    await user.type(screen.getByLabelText(/gig name/i), 'Two Setlist Gig');
+
+    await user.click(await screen.findByRole('checkbox', { name: 'Acoustic Set' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Friday Night Set' }));
+
+    await user.click(screen.getByRole('button', { name: /create & go live/i }));
+
+    await waitFor(() => {
+      expect(mockGigsInsert).toHaveBeenCalledWith(
+        expect.objectContaining({ setlist_id: 'setlist-2' }),
+      );
+      expect(mockGigSetlistsInsert).toHaveBeenCalledTimes(2);
+      expect(mockGigSetlistsInsert).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ setlist_id: 'setlist-2', position: 0 }),
+      );
+      expect(mockGigSetlistsInsert).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ setlist_id: 'setlist-1', position: 1 }),
+      );
       expect(mockPush).toHaveBeenCalledWith('/gigs/new-gig-123');
     });
   });
@@ -208,11 +256,7 @@ describe('CreateGigForm', () => {
     const nameInput = screen.getByLabelText(/gig name/i);
     await user.type(nameInput, 'Fail Gig');
 
-    const selectTrigger = screen.getByRole('combobox');
-    await user.click(selectTrigger);
-
-    const option = await screen.findByRole('option', { name: 'Friday Night Set' });
-    await user.click(option);
+    await user.click(await screen.findByRole('checkbox', { name: 'Friday Night Set' }));
 
     const submitBtn = screen.getByRole('button', { name: /create & go live/i });
     await user.click(submitBtn);

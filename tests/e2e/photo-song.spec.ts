@@ -65,8 +65,7 @@ test('create song with photos, persists on edit, photo mode in live view', async
   const gigTitleInput = page.getByPlaceholder('Friday Night at Blue Frog');
   await gigTitleInput.fill(GIG_TITLE);
   await expect(gigTitleInput).toHaveValue(GIG_TITLE);
-  await page.getByRole('combobox').click();
-  await page.getByRole('option', { name: SETLIST_NAME }).click();
+  await page.getByRole('checkbox', { name: SETLIST_NAME }).click();
   await page.getByRole('button', { name: /create & go live/i }).click();
   await page.waitForURL(/\/gigs\/[0-9a-f-]+/);
 

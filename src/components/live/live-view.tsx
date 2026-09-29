@@ -4,13 +4,17 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Menu, Users } from 'lucide-react';
 import { Tables } from '@/types/database';
-import { useGigStore } from '@/stores/gig-store';
+import { useGigStore, type QueueItem } from '@/stores/gig-store';
 import { useSync } from '@/hooks/use-sync';
+import { useSupabase } from '@/hooks/use-supabase';
+import { fetchSetlistSongs } from '@/lib/live/setlist-queue';
+import { CacheManager } from '@/lib/offline/cache-manager';
 import { SetlistSidebar } from './setlist-sidebar';
 import { SongDisplay } from './song-display';
 import { AdminControls } from './admin-controls';
 import { MusicianControls } from './musician-controls';
 import { MemberList } from './member-list';
+import { AddSetlistDialog } from './add-setlist-dialog';
 import { useSongPhotos } from '@/hooks/use-song-photos';
 import { ConnectionBadge } from '@/components/gigs/connection-badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -19,40 +23,58 @@ import { Badge } from '@/components/ui/badge';
 
 type Gig = Tables<'gigs'>;
 type Song = Tables<'songs'>;
+type Setlist = Tables<'setlists'>;
 
 interface LiveViewProps {
   gig: Gig;
   songs: Song[];
   songIds: string[];
+  queue: QueueItem[];
   myRole: 'admin' | 'co-admin' | 'musician';
   userId: string;
 }
 
-export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps) {
+export function LiveView({ gig, songs, songIds, queue, myRole, userId }: LiveViewProps) {
   const { connect, disconnect, send } = useSync();
+  const supabase = useSupabase();
   const setGig = useGigStore((state) => state.setGig);
   const setSongIds = useGigStore((state) => state.setSongIds);
+  const setSongs = useGigStore((state) => state.setSongs);
+  const setQueue = useGigStore((state) => state.setQueue);
+  const setActiveSetlistId = useGigStore((state) => state.setActiveSetlistId);
   const setStatus = useGigStore((state) => state.setStatus);
   const setActiveSongId = useGigStore((state) => state.setActiveSongId);
   const activeSongId = useGigStore((state) => state.activeSongId);
   const status = useGigStore((state) => state.status);
+  const storeSongs = useGigStore((state) => state.songs);
+  const storeSongIds = useGigStore((state) => state.songIds);
+  const storeQueue = useGigStore((state) => state.queue);
+  const activeSetlistId = useGigStore((state) => state.activeSetlistId);
   const router = useRouter();
-  
+
   const [showMembers, setShowMembers] = useState(false);
   const [setlistOpen, setSetlistOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [availableSetlists, setAvailableSetlists] = useState<Setlist[]>([]);
+  const [addLoading, setAddLoading] = useState(false);
+  const [addError, setAddError] = useState<string | null>(null);
   const isAdmin = myRole === 'admin' || myRole === 'co-admin';
   const isHost = myRole === 'admin';
 
   useEffect(() => {
-    // Initialize store
+    // Initialize store once per gig mount; client-side switches update the
+    // store directly and must not be reset from stale props.
     setGig(gig.id, myRole);
     setSongIds(songIds);
+    setSongs(songs);
+    setQueue(queue);
+    setActiveSetlistId(gig.setlist_id);
     setStatus(gig.status as 'draft' | 'live' | 'ended');
-    if (songIds.length > 0 && !activeSongId) {
+    if (songIds.length > 0 && !useGigStore.getState().activeSongId) {
       setActiveSongId(songIds[0]);
     }
     useGigStore.getState().updateMemberRole(userId, myRole);
-  }, [gig.id, myRole, songIds, gig.status, userId, setGig, setSongIds, setStatus, setActiveSongId, activeSongId]);
+  }, [gig.id, gig.setlist_id, gig.status, myRole, songIds, songs, queue, userId, setGig, setSongIds, setSongs, setQueue, setActiveSetlistId, setStatus, setActiveSongId]);
 
   useEffect(() => {
     // Connect to sync
@@ -70,8 +92,9 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
     }
   }, [status, isAdmin, router]);
 
-  const activeSong = songs.find(s => s.id === activeSongId) || null;
+  const activeSong = storeSongs.find(s => s.id === activeSongId) || null;
   const activePhotos = useSongPhotos(activeSong?.id);
+  const activeSetName = storeQueue.find((q) => q.setlistId === activeSetlistId)?.name;
 
   const handleSongSelect = (songId: string) => {
     if (isAdmin) {
@@ -79,6 +102,89 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
       send({ type: 'SONG_CHANGE', songId, timestamp: Date.now() });
       setSetlistOpen(false);
     }
+  };
+
+  const handleSwitchSetlist = async (item: QueueItem) => {
+    if (!isAdmin || item.setlistId === activeSetlistId) return;
+    const { error } = await supabase
+      .from('gigs')
+      .update({ setlist_id: item.setlistId })
+      .eq('id', gig.id);
+    if (error) {
+      console.error('Failed to switch setlist:', error);
+      return;
+    }
+    try {
+      const { songs: newSongs, songIds: newIds } = await fetchSetlistSongs(supabase, item.setlistId);
+      useGigStore.getState().applySetlistUpdate({
+        songIds: newIds,
+        songs: newSongs,
+        setlistId: item.setlistId,
+      });
+      send({
+        type: 'SETLIST_UPDATE',
+        songIds: newIds,
+        setlistId: item.setlistId,
+        timestamp: Date.now(),
+      });
+      CacheManager.cacheGigState(gig.id, item.setlistId, newIds).catch((err) =>
+        console.error('Failed to cache gig state:', err),
+      );
+    } catch (err) {
+      console.error('Failed to load setlist songs:', err);
+    }
+  };
+
+  const openAddDialog = async () => {
+    setAddOpen(true);
+    setAddLoading(true);
+    setAddError(null);
+    const { data, error } = await supabase
+      .from('setlists')
+      .select('*')
+      .eq('owner_id', userId)
+      .order('name');
+    if (error || !data) {
+      setAddError('Could not load your setlists. Try again.');
+    } else {
+      const queued = new Set(useGigStore.getState().queue.map((q) => q.setlistId));
+      setAvailableSetlists((data as Setlist[]).filter((s) => !queued.has(s.id)));
+    }
+    setAddLoading(false);
+  };
+
+  const handleAddSetlist = async (setlist: Setlist) => {
+    const position = useGigStore.getState().queue.length;
+    const { data: row, error } = await supabase
+      .from('gig_setlists')
+      .insert({
+        gig_id: gig.id,
+        setlist_id: setlist.id,
+        setlist_name: setlist.name,
+        position,
+      })
+      .select()
+      .single();
+    if (error || !row) {
+      setAddError('Could not add that setlist. Try again.');
+      return;
+    }
+    useGigStore.getState().addToQueue({
+      id: row.id as string,
+      setlistId: setlist.id,
+      name: setlist.name,
+    });
+    setAddOpen(false);
+  };
+
+  const handleRemoveSetlist = async (item: QueueItem) => {
+    if (item.setlistId === activeSetlistId) return;
+    const { error } = await supabase.from('gig_setlists').delete().eq('id', item.id);
+    if (error) {
+      console.error('Failed to remove setlist from queue:', error);
+      return;
+    }
+    useGigStore.getState().removeFromQueue(item.id);
   };
 
   return (
@@ -93,7 +199,17 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-80 border-r border-border">
-              <SetlistSidebar songs={songs} onSongSelect={handleSongSelect} isAdmin={isAdmin} />
+              <SetlistSidebar
+                songs={storeSongs}
+                onSongSelect={handleSongSelect}
+                isAdmin={isAdmin}
+                queue={storeQueue}
+                activeSetlistId={activeSetlistId}
+                activeSetName={activeSetName}
+                onSwitchSetlist={handleSwitchSetlist}
+                onRemoveSetlist={handleRemoveSetlist}
+                onAddSetlist={openAddDialog}
+              />
             </SheetContent>
           </Sheet>
           
@@ -128,7 +244,17 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
       <main className="flex-1 flex overflow-hidden">
         {/* Desktop Sidebar */}
         <div className="hidden md:block w-80 shrink-0">
-          <SetlistSidebar songs={songs} onSongSelect={handleSongSelect} isAdmin={isAdmin} />
+          <SetlistSidebar
+            songs={storeSongs}
+            onSongSelect={handleSongSelect}
+            isAdmin={isAdmin}
+            queue={storeQueue}
+            activeSetlistId={activeSetlistId}
+            activeSetName={activeSetName}
+            onSwitchSetlist={handleSwitchSetlist}
+            onRemoveSetlist={handleRemoveSetlist}
+            onAddSetlist={openAddDialog}
+          />
         </div>
 
         {/* Song Display */}
@@ -137,7 +263,7 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
           isAdmin={isAdmin}
           send={send}
           photos={activePhotos}
-          songs={songs}
+          songs={storeSongs}
           onSongSelect={handleSongSelect}
         />
 
@@ -152,11 +278,21 @@ export function LiveView({ gig, songs, songIds, myRole, userId }: LiveViewProps)
       {/* Bottom Controls */}
       <footer className="shrink-0 border-t border-border bg-surface">
         {isAdmin ? (
-          <AdminControls songIds={songIds} onSend={send} />
+          <AdminControls songIds={storeSongIds} onSend={send} />
         ) : (
           <MusicianControls />
         )}
       </footer>
+
+      <AddSetlistDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        setlists={availableSetlists}
+        loading={addLoading}
+        error={addError}
+        onSelect={handleAddSetlist}
+      />
     </div>
   );
 }
+

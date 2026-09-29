@@ -245,6 +245,48 @@ export interface Database {
           },
         ];
       };
+      gig_setlists: {
+        Row: {
+          id: string;
+          gig_id: string;
+          setlist_id: string;
+          setlist_name: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          gig_id: string;
+          setlist_id: string;
+          setlist_name?: string;
+          position?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          gig_id?: string;
+          setlist_id?: string;
+          setlist_name?: string;
+          position?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'gig_setlists_gig_id_fkey';
+            columns: ['gig_id'];
+            isOneToOne: false;
+            referencedRelation: 'gigs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'gig_setlists_setlist_id_fkey';
+            columns: ['setlist_id'];
+            isOneToOne: false;
+            referencedRelation: 'setlists';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       annotations: {
         Row: {
           id: string;

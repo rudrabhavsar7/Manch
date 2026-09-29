@@ -30,8 +30,8 @@ export default async function GigPage({ params }: GigPageProps) {
     notFound();
   }
 
-  // Wave 2: membership and setlist songs only depend on wave 1 results.
-  const [memberResult, songsResult] = await Promise.all([
+  // Wave 2: membership, setlist songs and queue only depend on wave 1 results.
+  const [memberResult, songsResult, queueResult] = await Promise.all([
     supabase
       .from('gig_members')
       .select('role')
@@ -42,6 +42,11 @@ export default async function GigPage({ params }: GigPageProps) {
       .from('setlist_songs')
       .select('song_id, position, songs(*)')
       .eq('setlist_id', gig.setlist_id)
+      .order('position'),
+    supabase
+      .from('gig_setlists')
+      .select('*')
+      .eq('gig_id', gigId)
       .order('position'),
   ]);
 
@@ -57,17 +62,30 @@ export default async function GigPage({ params }: GigPageProps) {
     notFound();
   }
 
+  const { data: queueRows, error: queueError } = queueResult;
+
+  if (queueError || !queueRows) {
+    notFound();
+  }
+
   const songs = setlistSongs
     .map(ss => ss.songs)
     .filter(s => s !== null) as unknown as Tables<'songs'>[];
-    
+
   const songIds = setlistSongs.map(ss => ss.song_id);
+
+  const queue = queueRows.map((row) => ({
+    id: row.id,
+    setlistId: row.setlist_id,
+    name: row.setlist_name,
+  }));
 
   return (
     <LiveView 
       gig={gig} 
       songs={songs} 
       songIds={songIds} 
+      queue={queue}
       myRole={member.role} 
       userId={claims.sub} 
     />
