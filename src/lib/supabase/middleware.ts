@@ -41,17 +41,9 @@ export async function updateSession(request: NextRequest) {
 
   // getClaims() verifies the JWT locally (asymmetric keys + cached JWKS)
   // instead of a network roundtrip per request like getUser().
-  const { data, error } = await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
 
   if (!data?.claims) {
-    console.warn(
-      '[auth-redirect]',
-      JSON.stringify({
-        path: request.nextUrl.pathname,
-        cookieNames: request.cookies.getAll().map((c) => c.name),
-        claimsError: error?.message ?? null,
-      }),
-    );
     const url = request.nextUrl.clone();
     url.pathname = '/auth/login';
     const redirectResponse = NextResponse.redirect(url);
