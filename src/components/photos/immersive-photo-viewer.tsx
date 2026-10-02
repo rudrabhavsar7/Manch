@@ -180,16 +180,74 @@ export function ImmersivePhotoViewer({
     setStoreScale(PHOTO_MIN_SCALE);
   }, [setStoreScale]);
 
-  const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+  const scaleRef = useRef(scale);
+  const gestureBaseScaleRef = useRef(PHOTO_MIN_SCALE);
+
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleNativeWheel = (e: WheelEvent) => {
+      // Prevent browser default window pinch-zoom and whole-page scrolling
       e.preventDefault();
-      const next = clampScale(e.deltaY < 0 ? scale * WHEEL_STEP : scale / WHEEL_STEP);
+      e.stopPropagation();
+
+      let next: number;
+      if (e.ctrlKey) {
+        // Trackpad pinch-to-zoom (or Ctrl+wheel): smooth continuous zoom
+        const factor = Math.exp(-e.deltaY * 0.01);
+        next = clampScale(scaleRef.current * factor);
+      } else if (scaleRef.current > PHOTO_MIN_SCALE && Math.abs(e.deltaX) > 0) {
+        // Two-finger horizontal/diagonal pan when zoomed in
+        setOffset((o) => ({ x: o.x - e.deltaX, y: o.y - e.deltaY }));
+        return;
+      } else {
+        // Standard discrete mouse wheel or stepped zoom
+        next = clampScale(e.deltaY < 0 ? scaleRef.current * WHEEL_STEP : scaleRef.current / WHEEL_STEP);
+      }
+
       prevStoreScaleRef.current = next;
       setScale(next);
       setStoreScale(next);
-    },
-    [scale, setStoreScale],
-  );
+    };
+
+    const handleGestureStart = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      gestureBaseScaleRef.current = scaleRef.current;
+    };
+
+    const handleGestureChange = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const ge = e as unknown as { scale: number };
+      const next = clampScale(gestureBaseScaleRef.current * (ge.scale || 1));
+      prevStoreScaleRef.current = next;
+      setScale(next);
+      setStoreScale(next);
+    };
+
+    const handleGestureEnd = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+    };
+
+    container.addEventListener('wheel', handleNativeWheel, { passive: false });
+    container.addEventListener('gesturestart', handleGestureStart, { passive: false });
+    container.addEventListener('gesturechange', handleGestureChange, { passive: false });
+    container.addEventListener('gestureend', handleGestureEnd, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleNativeWheel);
+      container.removeEventListener('gesturestart', handleGestureStart);
+      container.removeEventListener('gesturechange', handleGestureChange);
+      container.removeEventListener('gestureend', handleGestureEnd);
+    };
+  }, [setStoreScale]);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
@@ -319,8 +377,8 @@ export function ImmersivePhotoViewer({
   if (photos.length === 0) return null;
 
   const rootClass = immersive
-    ? 'fixed inset-0 z-50 bg-black flex items-center justify-center overflow-hidden'
-    : `relative flex-1 flex items-center justify-center overflow-hidden bg-stage ${className}`;
+    ? 'fixed inset-0 z-50 bg-black flex items-center justify-center overflow-hidden touch-none'
+    : `relative flex-1 flex items-center justify-center overflow-hidden bg-stage touch-none ${className}`;
 
   const zoomControls = (
     <>
@@ -373,7 +431,6 @@ export function ImmersivePhotoViewer({
       data-testid="photo-viewer"
       data-immersive={immersive}
       className={rootClass}
-      onWheel={handleWheel}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

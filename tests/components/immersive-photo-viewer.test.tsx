@@ -176,6 +176,64 @@ describe('ImmersivePhotoViewer', () => {
       fireEvent.click(screen.getByTestId('photo-zoom-reset'));
       expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
     });
+
+    it('trackpad pinch-to-zoom (ctrlKey) zooms photo smoothly and prevents browser window zoom', () => {
+      render(<ImmersivePhotoViewer photos={photos} immersive={false} />);
+      const viewer = screen.getByTestId('photo-viewer');
+
+      const pinchZoomIn = new WheelEvent('wheel', {
+        deltaY: -20,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      act(() => {
+        viewer.dispatchEvent(pinchZoomIn);
+      });
+
+      expect(pinchZoomIn.defaultPrevented).toBe(true);
+      expect(useUIStore.getState().photoScale).toBeGreaterThan(1.1);
+      expect(useUIStore.getState().photoScale).toBeLessThan(1.4);
+
+      const pinchZoomOut = new WheelEvent('wheel', {
+        deltaY: 50,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      act(() => {
+        viewer.dispatchEvent(pinchZoomOut);
+      });
+
+      expect(pinchZoomOut.defaultPrevented).toBe(true);
+      expect(useUIStore.getState().photoScale).toBe(1);
+    });
+
+    it('Safari trackpad gestures zoom photo and prevent default page zoom', () => {
+      render(<ImmersivePhotoViewer photos={photos} immersive={false} />);
+      const viewer = screen.getByTestId('photo-viewer');
+
+      const gestureStart = new CustomEvent('gesturestart', { bubbles: true, cancelable: true });
+      act(() => {
+        viewer.dispatchEvent(gestureStart);
+      });
+      expect(gestureStart.defaultPrevented).toBe(true);
+
+      const gestureChange = new CustomEvent('gesturechange', { bubbles: true, cancelable: true });
+      Object.defineProperty(gestureChange, 'scale', { value: 1.35 });
+      act(() => {
+        viewer.dispatchEvent(gestureChange);
+      });
+
+      expect(gestureChange.defaultPrevented).toBe(true);
+      expect(useUIStore.getState().photoScale).toBeCloseTo(1.35);
+
+      const gestureEnd = new CustomEvent('gestureend', { bubbles: true, cancelable: true });
+      act(() => {
+        viewer.dispatchEvent(gestureEnd);
+      });
+      expect(gestureEnd.defaultPrevented).toBe(true);
+    });
   });
 
   describe('swipe to change song', () => {
