@@ -10,6 +10,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import { useUIStore } from '@/stores/ui-store';
 import {
   ChevronLeft,
   ChevronRight,
@@ -51,6 +52,7 @@ interface ImmersivePhotoViewerProps {
   sheetExtra?: React.ReactNode;
   songNav?: React.ReactNode;
   className?: string;
+  hideBottomCluster?: boolean;
 }
 
 export function ImmersivePhotoViewer({
@@ -66,12 +68,46 @@ export function ImmersivePhotoViewer({
   sheetExtra,
   songNav,
   className = '',
+  hideBottomCluster = false,
 }: ImmersivePhotoViewerProps) {
   const [index, setIndex] = useState(initialIndex);
   const [scale, setScale] = useState(PHOTO_MIN_SCALE);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [showChrome, setShowChrome] = useState(!immersive);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const storeScale = useUIStore((s) => s.photoScale);
+  const storeIndex = useUIStore((s) => s.photoIndex);
+  const setStoreScale = useUIStore((s) => s.setPhotoScale);
+  const setStoreIndex = useUIStore((s) => s.setPhotoIndex);
+
+  const prevStoreIndexRef = useRef(initialIndex);
+  const prevStoreScaleRef = useRef(PHOTO_MIN_SCALE);
+
+  useEffect(() => {
+    setStoreIndex(initialIndex);
+    prevStoreIndexRef.current = initialIndex;
+    setStoreScale(PHOTO_MIN_SCALE);
+    prevStoreScaleRef.current = PHOTO_MIN_SCALE;
+  }, [initialIndex, setStoreIndex, setStoreScale]);
+
+  // Sync external store scale changes to viewer
+  useEffect(() => {
+    if (Math.abs(storeScale - prevStoreScaleRef.current) > 0.001) {
+      prevStoreScaleRef.current = storeScale;
+      setScale(storeScale);
+    }
+  }, [storeScale]);
+
+  // Sync external store index changes to viewer
+  useEffect(() => {
+    if (storeIndex !== prevStoreIndexRef.current) {
+      prevStoreIndexRef.current = storeIndex;
+      const safe = Math.max(0, Math.min(photos.length - 1, storeIndex));
+      setIndex(safe);
+      onIndexChange?.(safe);
+    }
+  }, [storeIndex, photos.length, onIndexChange]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerId: number; lastX: number; lastY: number } | null>(null);
@@ -91,9 +127,11 @@ export function ImmersivePhotoViewer({
   }, [immersive]);
 
   useEffect(() => {
+    prevStoreScaleRef.current = PHOTO_MIN_SCALE;
     setScale(PHOTO_MIN_SCALE);
     setOffset({ x: 0, y: 0 });
-  }, [safeIndex]);
+    setStoreScale(PHOTO_MIN_SCALE);
+  }, [safeIndex, setStoreScale]);
 
   useEffect(() => {
     if (scale === PHOTO_MIN_SCALE && (offset.x !== 0 || offset.y !== 0)) {
@@ -110,10 +148,12 @@ export function ImmersivePhotoViewer({
   const goTo = useCallback(
     (next: number) => {
       const clamped = Math.max(0, Math.min(photos.length - 1, next));
+      prevStoreIndexRef.current = clamped;
       setIndex(clamped);
+      setStoreIndex(clamped);
       onIndexChange?.(clamped);
     },
-    [photos.length, onIndexChange],
+    [photos.length, onIndexChange, setStoreIndex],
   );
 
   const revealChrome = useCallback(() => {
@@ -123,19 +163,32 @@ export function ImmersivePhotoViewer({
     hideTimerRef.current = setTimeout(() => setShowChrome(false), AUTO_HIDE_MS);
   }, [autoHide]);
 
-  const zoomTo = useCallback((value: number) => setScale(clampScale(value)), []);
+  const zoomTo = useCallback(
+    (value: number) => {
+      const next = clampScale(value);
+      prevStoreScaleRef.current = next;
+      setScale(next);
+      setStoreScale(next);
+    },
+    [setStoreScale],
+  );
 
   const resetZoom = useCallback(() => {
+    prevStoreScaleRef.current = PHOTO_MIN_SCALE;
     setScale(PHOTO_MIN_SCALE);
     setOffset({ x: 0, y: 0 });
-  }, []);
+    setStoreScale(PHOTO_MIN_SCALE);
+  }, [setStoreScale]);
 
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       e.preventDefault();
-      setScale((s) => clampScale(e.deltaY < 0 ? s * WHEEL_STEP : s / WHEEL_STEP));
+      const next = clampScale(e.deltaY < 0 ? scale * WHEEL_STEP : scale / WHEEL_STEP);
+      prevStoreScaleRef.current = next;
+      setScale(next);
+      setStoreScale(next);
     },
-    [],
+    [scale, setStoreScale],
   );
 
   const handlePointerDown = useCallback(
@@ -180,15 +233,21 @@ export function ImmersivePhotoViewer({
     [scale],
   );
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length !== 2 || !pinchRef.current) return;
-    const a = e.touches[0];
-    const b = e.touches[1];
-    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    if (pinchRef.current.dist > 0) {
-      setScale(clampScale(pinchRef.current.scale * (dist / pinchRef.current.dist)));
-    }
-  }, []);
+  const handleTouchMove = useCallback(
+    (e: React.TouchEvent) => {
+      if (e.touches.length !== 2 || !pinchRef.current) return;
+      const a = e.touches[0];
+      const b = e.touches[1];
+      const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      if (pinchRef.current.dist > 0) {
+        const next = clampScale(pinchRef.current.scale * (dist / pinchRef.current.dist));
+        prevStoreScaleRef.current = next;
+        setScale(next);
+        setStoreScale(next);
+      }
+    },
+    [setStoreScale],
+  );
 
   const handleTouchEnd = useCallback(
     (e: React.TouchEvent) => {
@@ -237,13 +296,16 @@ export function ImmersivePhotoViewer({
 
       const now = Date.now();
       if (now - lastTapRef.current < DOUBLE_TAP_MS) {
-        setScale((s) => (s > PHOTO_MIN_SCALE ? PHOTO_MIN_SCALE : PINCH_BASE_SCALE));
+        const next = scale > PHOTO_MIN_SCALE ? PHOTO_MIN_SCALE : PINCH_BASE_SCALE;
+        prevStoreScaleRef.current = next;
+        setScale(next);
+        setStoreScale(next);
         lastTapRef.current = 0;
       } else {
         lastTapRef.current = now;
       }
     },
-    [goTo, onCollapse, onSwipeSong, photos.length, safeIndex, scale, sheetOpen],
+    [goTo, onCollapse, onSwipeSong, photos.length, safeIndex, scale, setStoreScale, sheetOpen],
   );
 
   const handleClick = useCallback(() => {
@@ -431,7 +493,7 @@ export function ImmersivePhotoViewer({
       )}
 
       {/* bottom cluster */}
-      {(!immersive || photos.length > 1) && (
+      {((!immersive && !hideBottomCluster) || (immersive && photos.length > 1)) && (
         <div
           className={`absolute bottom-[calc(env(safe-area-inset-bottom)+16px)] left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 z-10 ${
             immersive

@@ -1,15 +1,13 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SongDisplay } from '@/components/live/song-display';
 import { Tables } from '@/types/database';
+import { useUIStore } from '@/stores/ui-store';
 
 // Mock child components
 vi.mock('@/components/live/transpose-control', () => ({
   TransposeControl: () => <div data-testid="mock-transpose" />
-}));
-vi.mock('@/components/live/font-size-control', () => ({
-  FontSizeControl: () => <div data-testid="mock-font-size" />
 }));
 vi.mock('@/components/live/auto-scroll', () => ({
   AutoScroll: () => <div data-testid="mock-auto-scroll" />
@@ -34,12 +32,32 @@ const mockSong: Song = {
 };
 
 describe('SongDisplay', () => {
+  beforeEach(() => {
+    useUIStore.setState({
+      photoScale: 1,
+      photoIndex: 0,
+      photoCount: 0,
+      isViewingPhoto: false,
+    });
+  });
+
   it('renders "No song selected" when song is null', () => {
     render(<SongDisplay song={null} isAdmin={false} />);
     expect(screen.getByText('No song selected')).toBeInTheDocument();
+    expect(useUIStore.getState().isViewingPhoto).toBe(false);
   });
 
-  it('renders song details and controls', () => {
+  it('handles transition from null song to selected song without hook order errors', () => {
+    const { rerender } = render(<SongDisplay song={null} isAdmin={true} />);
+    expect(screen.getByText('No song selected')).toBeInTheDocument();
+    expect(useUIStore.getState().isViewingPhoto).toBe(false);
+
+    rerender(<SongDisplay song={mockSong} isAdmin={true} />);
+    expect(screen.getByText('Wonderwall')).toBeInTheDocument();
+    expect(screen.getByTestId('mock-song-renderer')).toBeInTheDocument();
+  });
+
+  it('renders song details and controls without font-size in header', () => {
     render(<SongDisplay song={mockSong} isAdmin={true} />);
     expect(screen.getByText('Wonderwall')).toHaveClass('truncate');
     expect(screen.getByText('Oasis')).toBeInTheDocument();
@@ -47,9 +65,10 @@ describe('SongDisplay', () => {
     expect(screen.getByText('Em')).toBeInTheDocument();
     
     expect(screen.queryByTestId('mock-transpose')).not.toBeInTheDocument();
-    expect(screen.getByTestId('mock-font-size')).toBeInTheDocument();
+    expect(screen.queryByTestId('mock-font-size')).not.toBeInTheDocument();
     expect(screen.getByTestId('mock-auto-scroll')).toBeInTheDocument();
     expect(screen.getByTestId('mock-song-renderer')).toHaveTextContent('Today is gonna be the day');
+    expect(useUIStore.getState().isViewingPhoto).toBe(false);
   });
 
   it('renders transpose control for musician', () => {
@@ -83,7 +102,7 @@ describe('SongDisplay', () => {
     expect(screen.getByAltText(/song photo/i)).toHaveAttribute('src', 'https://example.com/1.jpg');
   });
 
-  it('navigates multiple photos with prev/next and shows counter', async () => {
+  it('synchronizes photo viewing and pagination with uiStore', async () => {
     const user = userEvent.setup();
     const photos = [
       { id: 'p1', url: 'https://example.com/1.jpg' },
@@ -91,16 +110,24 @@ describe('SongDisplay', () => {
     ];
     render(<SongDisplay song={mockSong} isAdmin={true} photos={photos} />);
 
+    expect(useUIStore.getState().isViewingPhoto).toBe(false);
+
     await user.click(screen.getByTestId('view-toggle'));
 
-    expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+    expect(useUIStore.getState().isViewingPhoto).toBe(true);
+    expect(useUIStore.getState().photoCount).toBe(2);
+    expect(useUIStore.getState().photoIndex).toBe(0);
+    expect(screen.getByAltText(/song photo/i)).toHaveAttribute('src', 'https://example.com/1.jpg');
 
-    await user.click(screen.getByTestId('photo-next'));
-    expect(screen.getByTestId('photo-counter')).toHaveTextContent('2/2');
+    act(() => {
+      useUIStore.getState().setPhotoIndex(1);
+    });
     expect(screen.getByAltText(/song photo/i)).toHaveAttribute('src', 'https://example.com/2.jpg');
 
-    await user.click(screen.getByTestId('photo-prev'));
-    expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+    act(() => {
+      useUIStore.getState().setPhotoIndex(0);
+    });
+    expect(screen.getByAltText(/song photo/i)).toHaveAttribute('src', 'https://example.com/1.jpg');
   });
 
   it('shows photo directly for photo-only song (no lyrics) without toggle', () => {
@@ -148,44 +175,47 @@ describe('SongDisplay photo zoom & immersive', () => {
     delete window.matchMedia;
   });
 
-  it('shows zoom toolbar inline on desktop (no fullscreen button)', () => {
+  it('hides bottom cluster on desktop leaving sheet music clean and unobstructed', () => {
     render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
 
     expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'false');
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
-    expect(screen.getByTestId('photo-zoom-in')).toBeInTheDocument();
-    expect(screen.getByTestId('photo-zoom-out')).toBeDisabled();
-    expect(screen.getByTestId('photo-zoom-reset')).toBeDisabled();
-    expect(screen.queryByTestId('photo-fullscreen')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('photo-zoom-level')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('photo-zoom-in')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('photo-prev')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('photo-counter')).not.toBeInTheDocument();
+    expect(useUIStore.getState().isViewingPhoto).toBe(true);
+    expect(useUIStore.getState().photoScale).toBe(1);
   });
 
-  it('wheel zooms in and out', () => {
+  it('wheel zooms in and out and syncs with uiStore', () => {
     render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
     const viewer = screen.getByTestId('photo-viewer');
+    const img = screen.getByAltText(/song photo/i);
 
     fireEvent.wheel(viewer, { deltaY: -100 });
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('110%');
+    expect(useUIStore.getState().photoScale).toBeCloseTo(1.1);
+    expect(img.style.transform).toContain('scale(1.1)');
 
     fireEvent.wheel(viewer, { deltaY: 100 });
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+    expect(useUIStore.getState().photoScale).toBe(1);
+    expect(img.style.transform).toContain('scale(1)');
   });
 
-  it('zoom buttons adjust level and fit resets to 100%', () => {
+  it('responds to store zoom changes and reset', () => {
     render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
+    const img = screen.getByAltText(/song photo/i);
 
-    fireEvent.click(screen.getByTestId('photo-zoom-in'));
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('125%');
-    expect(screen.getByTestId('photo-zoom-out')).toBeEnabled();
-    expect(screen.getByTestId('photo-zoom-reset')).toBeEnabled();
+    act(() => useUIStore.getState().setPhotoScale(1.25));
+    expect(img.style.transform).toContain('scale(1.25)');
 
-    fireEvent.click(screen.getByTestId('photo-zoom-out'));
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+    act(() => useUIStore.getState().resetPhotoScale());
+    expect(img.style.transform).toContain('scale(1)');
 
-    fireEvent.wheel(screen.getByTestId('photo-viewer'), { deltaY: -100 });
-    fireEvent.wheel(screen.getByTestId('photo-viewer'), { deltaY: -100 });
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('121%');
-    fireEvent.click(screen.getByTestId('photo-zoom-reset'));
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+    const viewer = screen.getByTestId('photo-viewer');
+    fireEvent.wheel(viewer, { deltaY: -100 });
+    expect(img.style.transform).toContain('scale(1.1)');
+    act(() => useUIStore.getState().resetPhotoScale());
+    expect(img.style.transform).toContain('scale(1)');
   });
 
   it('pans image only when zoomed', () => {
@@ -209,24 +239,24 @@ describe('SongDisplay photo zoom & immersive', () => {
   it('resets zoom when switching photos', () => {
     render(<SongDisplay song={photoOnlySong} isAdmin={true} photos={photos} />);
     const viewer = screen.getByTestId('photo-viewer');
+    const img = screen.getByAltText(/song photo/i);
 
     fireEvent.wheel(viewer, { deltaY: -100 });
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('110%');
+    expect(useUIStore.getState().photoScale).toBeCloseTo(1.1);
 
-    fireEvent.click(screen.getByTestId('photo-next'));
-    expect(screen.getByTestId('photo-zoom-level')).toHaveTextContent('100%');
+    act(() => useUIStore.getState().setPhotoIndex(1));
+    expect(useUIStore.getState().photoScale).toBe(1);
+    expect(img.style.transform).toContain('scale(1)');
   });
 
-  it('hides font size and auto scroll controls in photo mode', async () => {
+  it('hides auto scroll controls in photo mode', async () => {
     const user = userEvent.setup();
     render(<SongDisplay song={mockSong} isAdmin={true} photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]} />);
 
-    expect(screen.getByTestId('mock-font-size')).toBeInTheDocument();
     expect(screen.getByTestId('mock-auto-scroll')).toBeInTheDocument();
 
     await user.click(screen.getByTestId('view-toggle'));
 
-    expect(screen.queryByTestId('mock-font-size')).not.toBeInTheDocument();
     expect(screen.queryByTestId('mock-auto-scroll')).not.toBeInTheDocument();
     expect(screen.getByTestId('view-toggle')).toBeInTheDocument();
   });
@@ -250,10 +280,10 @@ describe('SongDisplay photo zoom & immersive', () => {
     expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'true');
     fireEvent.click(screen.getByTestId('photo-minimize'));
     expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'false');
-    expect(screen.getByTestId('photo-zoom-level')).toBeInTheDocument();
+    expect(screen.queryByTestId('photo-zoom-level')).not.toBeInTheDocument();
   });
 
-  it('shows song navigation for admin in photo mode and switches song', () => {
+  it('does not render song navigation in photo viewer (delegated to footer)', () => {
     const onSongSelect = vi.fn();
     const songs = [
       { ...mockSong, id: 's1', title: 'First' },
@@ -271,29 +301,7 @@ describe('SongDisplay photo zoom & immersive', () => {
     );
 
     fireEvent.click(screen.getByTestId('view-toggle'));
-    expect(screen.getByTestId('photo-song-counter')).toHaveTextContent('2/3');
-    fireEvent.click(screen.getByTestId('photo-song-next'));
-    expect(onSongSelect).toHaveBeenCalledWith('s3');
-    fireEvent.click(screen.getByTestId('photo-song-prev'));
-    expect(onSongSelect).toHaveBeenCalledWith('s1');
-  });
-
-  it('song navigation hidden for musicians in photo mode', () => {
-    const songs = [
-      { ...mockSong, id: 's1', title: 'First' },
-      { ...mockSong, id: 's2', title: 'Second' },
-    ];
-    render(
-      <SongDisplay
-        song={songs[0]}
-        isAdmin={false}
-        photos={[{ id: 'p1', url: 'https://example.com/1.jpg' }]}
-        songs={songs}
-        onSongSelect={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByTestId('view-toggle'));
+    expect(screen.queryByTestId('photo-song-counter')).not.toBeInTheDocument();
     expect(screen.queryByTestId('photo-song-next')).not.toBeInTheDocument();
     expect(screen.queryByTestId('photo-song-prev')).not.toBeInTheDocument();
   });
@@ -326,7 +334,7 @@ describe('SongDisplay photo zoom & immersive', () => {
 
     expect(onSongSelect).toHaveBeenCalledWith('s3');
     // photo stays put - swipe moves songs, not photos
-    expect(screen.getByTestId('photo-counter')).toHaveTextContent('1/2');
+    expect(useUIStore.getState().photoIndex).toBe(0);
   });
 
   it('horizontal swipe at the edge of the setlist does nothing', () => {
@@ -381,7 +389,8 @@ describe('SongDisplay photo zoom & immersive', () => {
     fireEvent.touchEnd(viewer, { changedTouches: [{ clientX: 160, clientY: 404 }] });
 
     expect(onSongSelect).not.toHaveBeenCalled();
-    expect(screen.getByTestId('photo-counter')).toHaveTextContent('2/2');
+    expect(useUIStore.getState().photoIndex).toBe(1);
+    expect(screen.getByAltText(/song photo/i)).toHaveAttribute('src', 'https://example.com/2.jpg');
   });
 
   it('keeps photo mode when the song changes', () => {
@@ -421,5 +430,55 @@ describe('SongDisplay photo zoom & immersive', () => {
 
     rerender(<SongDisplay song={songs[1]} {...props} />);
     expect(screen.getByTestId('photo-viewer')).toHaveAttribute('data-immersive', 'true');
+  });
+
+  it('resets zoom and photo index on song change and view toggle', async () => {
+    const user = userEvent.setup();
+    const songs = [
+      { ...mockSong, id: 's1', title: 'First' },
+      { ...mockSong, id: 's2', title: 'Second' },
+    ];
+    const photos = [
+      { id: 'p1', url: 'https://example.com/1.jpg' },
+      { id: 'p2', url: 'https://example.com/2.jpg' },
+    ];
+    const props = { isAdmin: true, photos, songs, onSongSelect: vi.fn() };
+    const { rerender } = render(<SongDisplay song={songs[0]} {...props} />);
+
+    await user.click(screen.getByTestId('view-toggle'));
+    expect(useUIStore.getState().isViewingPhoto).toBe(true);
+
+    act(() => {
+      useUIStore.getState().setPhotoScale(2);
+    });
+    expect(useUIStore.getState().photoScale).toBe(2);
+
+    act(() => {
+      useUIStore.getState().setPhotoIndex(1);
+    });
+    expect(useUIStore.getState().photoIndex).toBe(1);
+    expect(useUIStore.getState().photoScale).toBe(1);
+
+    // Zoom again on photo 1
+    act(() => {
+      useUIStore.getState().setPhotoScale(2);
+    });
+    expect(useUIStore.getState().photoScale).toBe(2);
+
+    // Toggle view back to lyrics
+    await user.click(screen.getByTestId('view-toggle'));
+    expect(useUIStore.getState().photoScale).toBe(1);
+    expect(useUIStore.getState().photoIndex).toBe(0);
+
+    // Toggle back to photo and change song
+    await user.click(screen.getByTestId('view-toggle'));
+    act(() => {
+      useUIStore.getState().setPhotoScale(2.5);
+      useUIStore.getState().setPhotoIndex(1);
+    });
+
+    rerender(<SongDisplay song={songs[1]} {...props} />);
+    expect(useUIStore.getState().photoScale).toBe(1);
+    expect(useUIStore.getState().photoIndex).toBe(0);
   });
 });

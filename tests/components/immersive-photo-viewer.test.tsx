@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, cleanup } from '@testing-library/react';
 import { ImmersivePhotoViewer } from '@/components/photos/immersive-photo-viewer';
+import { useUIStore } from '@/stores/ui-store';
 
 const photos = [
   { id: 'p1', url: 'https://example.com/1.jpg' },
@@ -280,6 +281,43 @@ describe('ImmersivePhotoViewer', () => {
       render(<ImmersivePhotoViewer photos={photos} immersive={false} initialIndex={1} />);
       expect(screen.getByTestId('photo-counter')).toHaveTextContent('2/2');
       expect(screen.getByAltText('Song photo')).toHaveAttribute('src', photos[1].url);
+    });
+  });
+
+  describe('hideBottomCluster and uiStore sync', () => {
+    it('omits bottom cluster when hideBottomCluster is true and !immersive', () => {
+      render(<ImmersivePhotoViewer photos={photos} immersive={false} hideBottomCluster={true} />);
+      expect(screen.queryByTestId('photo-zoom-level')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('photo-zoom-in')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('photo-prev')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('photo-next')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('photo-counter')).not.toBeInTheDocument();
+    });
+
+    it('syncs scale and index with uiStore bidirectionally', () => {
+      render(<ImmersivePhotoViewer photos={photos} immersive={false} />);
+      expect(useUIStore.getState().photoScale).toBe(1);
+      expect(useUIStore.getState().photoIndex).toBe(0);
+
+      // External zoom from store updates viewer
+      act(() => {
+        useUIStore.getState().setPhotoScale(2);
+      });
+      expect(screen.getByAltText('Song photo').style.transform).toContain('scale(2)');
+
+      // External index from store updates viewer
+      act(() => {
+        useUIStore.getState().setPhotoIndex(1);
+      });
+      expect(screen.getByAltText('Song photo')).toHaveAttribute('src', photos[1].url);
+
+      // Internal gesture/action updates store (photo was switched to index 1, which reset zoom to 1)
+      const viewer = screen.getByTestId('photo-viewer');
+      fireEvent.wheel(viewer, { deltaY: -100 });
+      expect(useUIStore.getState().photoScale).toBeCloseTo(1.1);
+
+      fireEvent.click(screen.getByTestId('photo-prev'));
+      expect(useUIStore.getState().photoIndex).toBe(0);
     });
   });
 });

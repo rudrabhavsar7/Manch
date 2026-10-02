@@ -1,7 +1,6 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { Tables } from '@/types/database';
 import { TransposeControl } from './transpose-control';
-import { FontSizeControl } from './font-size-control';
 import { AutoScroll } from './auto-scroll';
 import { SongRenderer } from '@/components/songs/song-renderer';
 import { useUIStore } from '@/stores/ui-store';
@@ -14,7 +13,7 @@ import { useGigStore } from '@/stores/gig-store';
 import { throttle } from '@/lib/utils/throttle';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { ImmersivePhotoViewer } from '@/components/photos/immersive-photo-viewer';
-import { FileText, Image as ImageIcon, SkipBack, SkipForward } from 'lucide-react';
+import { FileText, Image as ImageIcon } from 'lucide-react';
 
 type Song = Tables<'songs'>;
 
@@ -40,13 +39,20 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
   const scrollPosition = useGigStore((state) => state.scrollPosition);
   const { inlineAnnotations, generalAnnotations, addAnnotation, deleteAnnotation } = useAnnotations(song?.id || '');
 
+  const setIsViewingPhoto = useUIStore((state) => state.setIsViewingPhoto);
+  const setPhotoCount = useUIStore((state) => state.setPhotoCount);
+  const resetPhotoScale = useUIStore((state) => state.resetPhotoScale);
+  const setPhotoIndex = useUIStore((state) => state.setPhotoIndex);
+
   const [viewMode, setViewMode] = useState<'lyrics' | 'photo'>('lyrics');
   const [photoCollapsed, setPhotoCollapsed] = useState(false);
   const isPhone = useMediaQuery('(max-width: 767px)');
 
   useEffect(() => {
     setPhotoCollapsed(false);
-  }, [song?.id]);
+    resetPhotoScale();
+    setPhotoIndex(0);
+  }, [song?.id, resetPhotoScale, setPhotoIndex]);
 
   const throttledSend = React.useMemo(() => throttle((el: HTMLDivElement) => {
     if (!isAdmin || !send) return;
@@ -80,6 +86,19 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
     });
   }, [scrollPosition, scrollLock, isAdmin]);
 
+  const hasContent = Boolean(song?.content && song.content.trim());
+  const hasPhotos = photos.length > 0;
+  const showPhoto = Boolean(song && hasPhotos && (!hasContent || viewMode === 'photo'));
+
+  useEffect(() => {
+    setIsViewingPhoto(showPhoto);
+    setPhotoCount(photos.length);
+    return () => {
+      setIsViewingPhoto(false);
+      setPhotoCount(0);
+    };
+  }, [showPhoto, photos.length, setIsViewingPhoto, setPhotoCount]);
+
   if (!song) {
     return (
       <div className="flex-1 flex items-center justify-center bg-stage text-muted-foreground h-full">
@@ -88,46 +107,16 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
     );
   }
 
-  const hasContent = Boolean(song.content && song.content.trim());
-  const hasPhotos = photos.length > 0;
   const showToggle = hasContent && hasPhotos;
-  const showPhoto = hasPhotos && (!hasContent || viewMode === 'photo');
   const songIndex = songs.findIndex((s) => s.id === song.id);
   const showSongNav = isAdmin && songs.length > 1 && songIndex >= 0;
   const immersive = showPhoto && isPhone && !photoCollapsed;
 
-  const songNav = showSongNav ? (
-    <>
-      <Button
-        size="icon"
-        variant="ghost"
-        aria-label="Previous song"
-        data-testid="photo-song-prev"
-        disabled={songIndex === 0}
-        className="text-textPrimary"
-        onClick={() => onSongSelect?.(songs[songIndex - 1].id)}
-      >
-        <SkipBack className="h-4 w-4" />
-      </Button>
-      <span
-        data-testid="photo-song-counter"
-        className="text-xs font-mono text-muted-foreground w-10 text-center"
-      >
-        {songIndex + 1}/{songs.length}
-      </span>
-      <Button
-        size="icon"
-        variant="ghost"
-        aria-label="Next song"
-        data-testid="photo-song-next"
-        disabled={songIndex === songs.length - 1}
-        className="text-textPrimary"
-        onClick={() => onSongSelect?.(songs[songIndex + 1].id)}
-      >
-        <SkipForward className="h-4 w-4" />
-      </Button>
-    </>
-  ) : undefined;
+  const handleToggleView = (mode?: 'lyrics' | 'photo') => {
+    resetPhotoScale();
+    setPhotoIndex(0);
+    setViewMode((m) => mode ?? (m === 'lyrics' ? 'photo' : 'lyrics'));
+  };
 
   const swipeSong = showSongNav
     ? (dir: -1 | 1) => {
@@ -148,7 +137,7 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
             className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition ${
               viewMode === 'photo' ? 'bg-background text-foreground shadow' : 'text-muted-foreground'
             }`}
-            onClick={() => setViewMode('photo')}
+            onClick={() => handleToggleView('photo')}
           >
             <ImageIcon className="h-4 w-4 inline mr-1" />
             Photo
@@ -161,7 +150,7 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
             className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition ${
               viewMode === 'lyrics' ? 'bg-background text-foreground shadow' : 'text-muted-foreground'
             }`}
-            onClick={() => setViewMode('lyrics')}
+            onClick={() => handleToggleView('lyrics')}
           >
             <FileText className="h-4 w-4 inline mr-1" />
             Lyrics
@@ -208,7 +197,7 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
               data-testid="view-toggle"
               aria-label={viewMode === 'lyrics' ? 'Show photo' : 'Show lyrics'}
               className="border-stageBorder text-textPrimary hover:bg-elevated"
-              onClick={() => setViewMode((m) => (m === 'lyrics' ? 'photo' : 'lyrics'))}
+              onClick={() => handleToggleView()}
             >
               {viewMode === 'lyrics' ? (
                 <>
@@ -227,16 +216,14 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
             onAdd={(content, color) => addAnnotation('general', content, color)}
             onDelete={deleteAnnotation}
           />
-          {(!showPhoto || !isAdmin) && <div className="w-px h-6 bg-border mx-1" />}
           {!isAdmin && (
             <>
-              <TransposeControl songId={song.id} originalKey={song.key || 'C'} />
               <div className="w-px h-6 bg-border mx-1" />
+              <TransposeControl songId={song.id} originalKey={song.key || 'C'} />
             </>
           )}
           {!showPhoto && (
             <>
-              <FontSizeControl />
               <div className="w-px h-6 bg-border mx-1" />
               <AutoScroll containerRef={scrollRef} />
             </>
@@ -253,9 +240,9 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
           subtitle={song.artist}
           onCollapse={isPhone ? () => setPhotoCollapsed(true) : undefined}
           onExpand={isPhone && photoCollapsed ? () => setPhotoCollapsed(false) : undefined}
-          songNav={songNav}
           onSwipeSong={swipeSong}
           sheetExtra={sheetExtra}
+          hideBottomCluster={true}
         />
       ) : (
         <div
