@@ -37,7 +37,7 @@ export function AppSidebar() {
   }
 
   return (
-    <aside className="hidden md:flex w-56 flex-col border-r border-stageBorder bg-surface h-dvh sticky top-0 shrink-0">
+    <aside className="hidden md:flex short:!hidden w-56 flex-col border-r border-stageBorder bg-surface h-dvh sticky top-0 shrink-0">
       <div className="p-4 border-b border-stageBorder">
         <Link
           href="/dashboard"

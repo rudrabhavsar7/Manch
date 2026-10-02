@@ -49,18 +49,18 @@ export function Header() {
     'Musician';
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-stageBorder bg-surface px-4">
-      <div className="flex items-center gap-3">
+    <header className="sticky top-0 z-30 flex h-14 short:h-10 w-full items-center justify-between border-b border-stageBorder bg-surface px-4 short:px-2.5">
+      <div className="flex items-center gap-3 short:gap-2">
         {/* Mobile Navigation Sheet Trigger */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden text-textPrimary hover:bg-elevated"
+              className="md:hidden short:!inline-flex short:h-7 short:w-7 text-textPrimary hover:bg-elevated"
               aria-label="Open mobile navigation menu"
             >
-              <Menu className="h-5 w-5" />
+              <Menu className="h-5 w-5 short:h-4 short:w-4" />
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0 bg-surface border-stageBorder flex flex-col">

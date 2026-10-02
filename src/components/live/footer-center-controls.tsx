@@ -32,21 +32,21 @@ export function FooterCenterControls({ className = '' }: { className?: string })
   };
 
   return (
-    <div className={`flex items-center justify-center gap-1 sm:gap-2 flex-wrap ${className}`}>
+    <div className={`flex items-center justify-center gap-1 sm:gap-2 short:gap-0.5 flex-wrap ${className}`}>
       <Button
         size="icon"
         variant="ghost"
         aria-label="Zoom out"
         data-testid="photo-zoom-out"
         disabled={photoScale <= PHOTO_MIN_SCALE}
-        className="text-textPrimary h-8 w-8"
+        className="text-textPrimary h-8 w-8 short:h-7 short:w-7"
         onClick={() => zoomTo(photoScale / BUTTON_STEP)}
       >
-        <ZoomOut className="h-4 w-4" />
+        <ZoomOut className="h-4 w-4 short:h-3.5 short:w-3.5" />
       </Button>
       <span
         data-testid="photo-zoom-level"
-        className="text-xs font-mono text-muted-foreground w-10 text-center"
+        className="text-xs short:text-[11px] font-mono text-muted-foreground w-10 short:w-9 text-center"
       >
         {Math.round(photoScale * 100)}%
       </span>
@@ -56,10 +56,10 @@ export function FooterCenterControls({ className = '' }: { className?: string })
         aria-label="Zoom in"
         data-testid="photo-zoom-in"
         disabled={photoScale >= PHOTO_MAX_SCALE}
-        className="text-textPrimary h-8 w-8"
+        className="text-textPrimary h-8 w-8 short:h-7 short:w-7"
         onClick={() => zoomTo(photoScale * BUTTON_STEP)}
       >
-        <ZoomIn className="h-4 w-4" />
+        <ZoomIn className="h-4 w-4 short:h-3.5 short:w-3.5" />
       </Button>
       <Button
         size="sm"
@@ -67,30 +67,30 @@ export function FooterCenterControls({ className = '' }: { className?: string })
         aria-label="Fit to screen"
         data-testid="photo-zoom-reset"
         disabled={photoScale <= PHOTO_MIN_SCALE}
-        className="text-textPrimary h-8 px-2"
+        className="text-textPrimary h-8 px-2 short:h-7 short:px-1.5 short:text-xs"
         onClick={resetPhotoScale}
       >
-        <Scan className="h-4 w-4 sm:mr-1" />
+        <Scan className="h-4 w-4 short:h-3.5 short:w-3.5 sm:mr-1" />
         <span className="hidden sm:inline">Fit</span>
       </Button>
 
       {photoCount > 1 && (
         <>
-          <div className="w-px h-5 bg-border mx-1" />
+          <div className="w-px h-5 bg-border mx-1 short:mx-0.5" />
           <Button
             size="icon"
             variant="ghost"
             aria-label="Previous photo"
             data-testid="photo-prev"
             disabled={photoIndex === 0}
-            className="text-textPrimary h-8 w-8"
+            className="text-textPrimary h-8 w-8 short:h-7 short:w-7"
             onClick={() => setPhotoIndex(Math.max(0, photoIndex - 1))}
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-4 w-4 short:h-3.5 short:w-3.5" />
           </Button>
           <span
             data-testid="photo-counter"
-            className="text-xs font-mono text-muted-foreground"
+            className="text-xs short:text-[11px] font-mono text-muted-foreground"
           >
             {photoIndex + 1}/{photoCount}
           </span>
@@ -100,10 +100,10 @@ export function FooterCenterControls({ className = '' }: { className?: string })
             aria-label="Next photo"
             data-testid="photo-next"
             disabled={photoIndex >= photoCount - 1}
-            className="text-textPrimary h-8 w-8"
+            className="text-textPrimary h-8 w-8 short:h-7 short:w-7"
             onClick={() => setPhotoIndex(Math.min(photoCount - 1, photoIndex + 1))}
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-4 w-4 short:h-3.5 short:w-3.5" />
           </Button>
         </>
       )}

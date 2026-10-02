@@ -69,32 +69,32 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
   }, [gigId, endGig, setStatus, onSend, router]);
 
   return (
-    <div className="flex items-center justify-between w-full p-2 min-h-[56px] flex-wrap gap-y-1 bg-surface border-t border-border" suppressHydrationWarning>
-      <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4 shrink-0">
+    <div className="flex items-center justify-between w-full p-2 short:py-1 short:px-2 min-h-[56px] short:min-h-[38px] flex-wrap gap-y-1 bg-surface border-t border-border" suppressHydrationWarning>
+      <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4 short:gap-x-1.5 shrink-0">
         <Button 
           variant="outline" 
           onClick={handlePrev} 
           disabled={!hasPrev}
-          className="w-auto px-2 sm:w-24 sm:px-4 shrink-0"
+          className="w-auto px-2 sm:w-24 sm:px-4 short:h-7 short:px-2 shrink-0"
           aria-label="Previous song"
           data-testid="admin-prev"
         >
-          <ChevronLeft className="w-4 h-4 sm:mr-2" />
+          <ChevronLeft className="w-4 h-4 sm:mr-2 short:mr-0.5" />
           <span className="hidden sm:inline">Prev</span>
         </Button>
-        <div className="text-sm font-medium w-12 sm:w-16 text-center shrink-0">
+        <div className="text-sm short:text-xs font-medium w-12 sm:w-16 short:w-10 text-center shrink-0">
           {currentIndex >= 0 ? currentIndex + 1 : 0} / {total}
         </div>
         <Button 
           variant="outline" 
           onClick={handleNext} 
           disabled={!hasNext}
-          className="w-auto px-2 sm:w-24 sm:px-4 shrink-0"
+          className="w-auto px-2 sm:w-24 sm:px-4 short:h-7 short:px-2 shrink-0"
           aria-label="Next song"
           data-testid="admin-next"
         >
           <span className="hidden sm:inline">Next</span>
-          <ChevronRight className="w-4 h-4 sm:ml-2" />
+          <ChevronRight className="w-4 h-4 sm:ml-2 short:ml-0.5" />
         </Button>
       </div>
 
@@ -103,11 +103,11 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
       <Button 
         variant="destructive" 
         onClick={handleEndGig}
-        className="shrink-0 px-2 sm:px-4"
+        className="shrink-0 px-2 sm:px-4 short:h-7 short:px-2 short:text-xs"
         aria-label="End gig"
         data-testid="admin-end-gig"
       >
-        <Square className="w-4 h-4 mr-2 fill-current" />
+        <Square className="w-4 h-4 mr-2 short:mr-1 fill-current" />
         End Gig
       </Button>
     </div>

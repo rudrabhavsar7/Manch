@@ -46,7 +46,7 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
 
   const [viewMode, setViewMode] = useState<'lyrics' | 'photo'>('lyrics');
   const [photoCollapsed, setPhotoCollapsed] = useState(false);
-  const isPhone = useMediaQuery('(max-width: 767px)');
+  const isPhone = useMediaQuery('(max-width: 767px), (max-height: 500px)');
 
   useEffect(() => {
     setPhotoCollapsed(false);
@@ -170,10 +170,10 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
 
   return (
     <div className="flex-1 flex flex-col h-full bg-stage overflow-hidden relative">
-      <div className="p-3 sm:p-4 border-b border-border bg-surface flex flex-wrap items-center justify-between gap-3 sm:gap-4 z-10">
+      <div className="p-3 sm:p-4 short:py-1 short:px-3 border-b border-border bg-surface flex flex-wrap short:flex-nowrap items-center justify-between gap-3 sm:gap-4 short:gap-2 z-10">
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-2xl font-bold truncate">{song.title}</h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-muted-foreground text-xs sm:text-sm">
+          <h1 className="text-lg sm:text-2xl short:text-sm font-bold truncate">{song.title}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 short:mt-0 text-muted-foreground text-xs sm:text-sm short:text-[11px] short:gap-x-2">
             <span>{song.artist}</span>
             {song.bpm && (
               <>
@@ -184,33 +184,33 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
             {song.key && (
               <>
                 <span>&bull;</span>
-                <Badge variant="outline">{song.key}</Badge>
+                <Badge variant="outline" className="short:text-[9px] short:px-1 short:py-0">{song.key}</Badge>
               </>
             )}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4 bg-elevated p-1.5 sm:p-2 rounded-lg">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 short:gap-1 bg-elevated p-1.5 sm:p-2 short:p-0.5 rounded-lg short:shrink-0">
           {showToggle && (
             <Button
               size="sm"
               variant="outline"
               data-testid="view-toggle"
               aria-label={viewMode === 'lyrics' ? 'Show photo' : 'Show lyrics'}
-              className="border-stageBorder text-textPrimary hover:bg-elevated"
+              className="border-stageBorder text-textPrimary hover:bg-elevated short:h-7 short:px-2 short:text-xs"
               onClick={() => handleToggleView()}
             >
               {viewMode === 'lyrics' ? (
                 <>
-                  <ImageIcon className="h-4 w-4 mr-1" /> Photo
+                  <ImageIcon className="h-4 w-4 mr-1 short:mr-0.5 short:h-3.5 short:w-3.5" /> Photo
                 </>
               ) : (
                 <>
-                  <FileText className="h-4 w-4 mr-1" /> Lyrics
+                  <FileText className="h-4 w-4 mr-1 short:mr-0.5 short:h-3.5 short:w-3.5" /> Lyrics
                 </>
               )}
             </Button>
           )}
-          {showToggle && <div className="w-px h-6 bg-border mx-1" />}
+          {showToggle && <div className="w-px h-6 bg-border mx-1 short:hidden" />}
           <GeneralNotes
             annotations={generalAnnotations}
             onAdd={(content, color) => addAnnotation('general', content, color)}
@@ -218,13 +218,13 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
           />
           {!isAdmin && (
             <>
-              <div className="w-px h-6 bg-border mx-1" />
+              <div className="w-px h-6 bg-border mx-1 short:hidden" />
               <TransposeControl songId={song.id} originalKey={song.key || 'C'} />
             </>
           )}
           {!showPhoto && (
             <>
-              <div className="w-px h-6 bg-border mx-1" />
+              <div className="w-px h-6 bg-border mx-1 short:hidden" />
               <AutoScroll containerRef={scrollRef} />
             </>
           )}
@@ -247,11 +247,11 @@ export function SongDisplay({ song, isAdmin, send, photos = [], songs = [], onSo
       ) : (
         <div
           ref={scrollRef}
-          className={`flex-1 p-8 ${scrollLock ? 'overflow-hidden' : 'overflow-y-auto'}`}
+          className={`flex-1 p-8 short:p-3 short:px-4 ${scrollLock ? 'overflow-hidden' : 'overflow-y-auto'}`}
           data-testid="song-scroll-container"
           onScroll={isAdmin ? handleScroll : undefined}
         >
-          <div className="max-w-4xl mx-auto pb-64">
+          <div className="max-w-4xl mx-auto pb-64 short:pb-16">
             <SongRenderer
               content={song.content}
               transpose={transpose}

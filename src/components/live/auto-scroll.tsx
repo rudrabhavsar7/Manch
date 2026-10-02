@@ -60,17 +60,17 @@ export function AutoScroll({ containerRef }: AutoScrollProps) {
   }, [autoScroll, autoScrollSpeed, containerRef]);
 
   return (
-    <div className="flex items-center space-x-2 sm:space-x-4">
+    <div className="flex items-center space-x-2 sm:space-x-4 short:space-x-1.5">
       <Button 
         variant={autoScroll ? "default" : "outline"}
         size="icon" 
-        className="h-8 w-8 shrink-0"
+        className="h-8 w-8 short:h-7 short:w-7 shrink-0"
         onClick={toggleAutoScroll}
         data-testid="auto-scroll-toggle"
       >
-        {autoScroll ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        {autoScroll ? <Pause className="h-4 w-4 short:h-3.5 short:w-3.5" /> : <Play className="h-4 w-4 short:h-3.5 short:w-3.5" />}
       </Button>
-      <div className="w-20 sm:w-[120px] flex items-center">
+      <div className="w-20 sm:w-[120px] short:w-16 flex items-center">
         <Slider
           min={10}
           max={150}

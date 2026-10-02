@@ -19,11 +19,11 @@ export function GeneralNotes({ annotations, onAdd, onDelete }: GeneralNotesProps
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative">
-          <StickyNote className="h-4 w-4 mr-1" />
+        <Button variant="ghost" size="sm" className="relative short:h-7 short:px-2 short:text-xs">
+          <StickyNote className="h-4 w-4 mr-1 short:mr-0.5 short:h-3.5 short:w-3.5" />
           Notes
           {annotations.length > 0 && (
-            <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 text-xs flex items-center justify-center">
+            <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full w-4 h-4 short:w-3.5 short:h-3.5 text-xs short:text-[10px] flex items-center justify-center">
               {annotations.length}
             </span>
           )}

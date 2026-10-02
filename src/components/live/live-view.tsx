@@ -190,12 +190,12 @@ export function LiveView({ gig, songs, songIds, queue, myRole, userId }: LiveVie
   return (
     <div className="flex flex-col h-[100dvh] w-full bg-stage text-foreground overflow-hidden">
       {/* Top Header */}
-      <header className="h-[48px] flex items-center justify-between px-4 bg-surface border-b border-border shrink-0">
-        <div className="flex items-center space-x-4">
+      <header className="h-[48px] short:h-9 flex items-center justify-between px-4 short:px-2.5 bg-surface border-b border-border shrink-0">
+        <div className="flex items-center space-x-4 short:space-x-2">
           <Sheet open={setlistOpen} onOpenChange={setSetlistOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="md:hidden" aria-label="Open setlist">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="md:hidden short:!inline-flex short:h-7 short:w-7" aria-label="Open setlist">
+                <Menu className="h-5 w-5 short:h-4 short:w-4" />
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-80 border-r border-border">
@@ -213,19 +213,19 @@ export function LiveView({ gig, songs, songIds, queue, myRole, userId }: LiveVie
             </SheetContent>
           </Sheet>
           
-          <div className="font-semibold text-lg truncate max-w-[150px] sm:max-w-xs">
+          <div className="font-semibold text-lg short:text-sm truncate max-w-[150px] sm:max-w-xs">
             {gig.name}
           </div>
           
           {isAdmin && (
-            <Badge variant="outline" className="inline-flex bg-background font-mono text-[10px] sm:text-xs">
+            <Badge variant="outline" className="inline-flex bg-background font-mono text-[10px] sm:text-xs short:text-[9px] short:px-1.5 short:py-0">
               PIN: {gig.pin}
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center space-x-4">
-          <div className="hidden sm:block">
+        <div className="flex items-center space-x-4 short:space-x-2">
+          <div className="hidden sm:block short:block">
             <ConnectionBadge />
           </div>
           <Button 
@@ -233,17 +233,17 @@ export function LiveView({ gig, songs, songIds, queue, myRole, userId }: LiveVie
             size="icon" 
             aria-label="Toggle band members"
             onClick={() => setShowMembers(!showMembers)}
-            className={showMembers ? 'bg-muted' : ''}
+            className={`short:h-7 short:w-7 ${showMembers ? 'bg-muted' : ''}`}
           >
-            <Users className="h-5 w-5" />
+            <Users className="h-5 w-5 short:h-4 short:w-4" />
           </Button>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1 flex overflow-hidden">
-        {/* Desktop Sidebar */}
-        <div className="hidden md:block w-80 shrink-0">
+        {/* Desktop Sidebar (hidden on mobile landscape short screens) */}
+        <div className="hidden md:block short:!hidden w-80 shrink-0">
           <SetlistSidebar
             songs={storeSongs}
             onSongSelect={handleSongSelect}
