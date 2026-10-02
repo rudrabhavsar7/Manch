@@ -222,7 +222,7 @@ export function CreateGigForm() {
           <Button
             type="submit"
             disabled={saving || (setlists.length === 0 && !loadingSetlists)}
-            className="w-full bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
+            className="w-full bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold"
           >
             {saving ? 'Creating...' : 'Create & Go Live'}
           </Button>

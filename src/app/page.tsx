@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Radio, Music, ScrollText, Edit3, WifiOff, Moon, ArrowRight, LogIn } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
+import { LogoFull } from '@/components/ui/logo';
 
 export default function Home() {
   const user = useAuthStore((s) => s.user);
@@ -18,9 +19,9 @@ export default function Home() {
           <span>Real-time stage sync engine</span>
         </div>
 
-        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-tight text-textPrimary">
-          Manch
-        </h1>
+        <div className="flex items-center justify-center gap-3">
+          <LogoFull size="xl" aria-label="Manch" />
+        </div>
         <p className="text-xl sm:text-2xl font-medium text-textSecondary max-w-2xl">
           Live Gig Companion for Musicians
         </p>
@@ -31,14 +32,14 @@ export default function Home() {
 
         <div className="flex flex-wrap justify-center gap-3 pt-4">
           {user ? (
-            <Button asChild size="lg" className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium">
+            <Button asChild size="lg" className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold">
               <Link href="/dashboard">
                 Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           ) : (
             <>
-              <Button asChild size="lg" className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium">
+              <Button asChild size="lg" className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold">
                 <Link href="/auth/signup">
                   Get Started <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>

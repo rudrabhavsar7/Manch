@@ -178,7 +178,7 @@ export function SongList({ initialSongs, initialQuery = '' }: SongListProps) {
             onClick={() => setSelectedKey('ALL')}
             className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors shrink-0 ${
               selectedKey === 'ALL'
-                ? 'bg-stageAccent text-white font-semibold'
+                ? 'bg-stageAccent text-stageAccentForeground font-semibold'
                 : 'bg-surface border border-stageBorder text-textSecondary hover:text-textPrimary hover:bg-elevated'
             }`}
           >
@@ -191,7 +191,7 @@ export function SongList({ initialSongs, initialQuery = '' }: SongListProps) {
               onClick={() => setSelectedKey(selectedKey === k ? 'ALL' : k)}
               className={`px-2 py-1 rounded-md text-xs font-mono transition-colors shrink-0 ${
                 selectedKey === k
-                  ? 'bg-stageAccent text-white font-semibold'
+                  ? 'bg-stageAccent text-stageAccentForeground font-semibold'
                   : 'bg-surface border border-stageBorder text-textSecondary hover:text-textPrimary hover:bg-elevated'
               }`}
             >

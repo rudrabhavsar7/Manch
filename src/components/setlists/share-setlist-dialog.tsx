@@ -241,7 +241,7 @@ export function ShareSetlistDialog({ setlistId, className }: ShareSetlistDialogP
               <Button
                 type="submit"
                 disabled={loading || !email.trim()}
-                className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium shrink-0"
+                className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold shrink-0"
                 aria-label="Add user"
               >
                 <UserPlus className="h-4 w-4" />

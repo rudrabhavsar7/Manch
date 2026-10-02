@@ -92,7 +92,7 @@ export function PhotoUploader({
                 className="w-full h-full object-cover"
               />
               {item.kind === 'pending' && (
-                <span className="absolute top-1 left-1 bg-stageAccent text-white text-[10px] px-1 rounded">
+                <span className="absolute top-1 left-1 bg-stageAccent text-stageAccentForeground text-[10px] font-semibold px-1 rounded">
                   New
                 </span>
               )}

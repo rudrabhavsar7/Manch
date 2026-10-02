@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { LogoIcon } from '@/components/ui/logo';
 import { cn } from '@/lib/utils/cn';
 import {
   LayoutDashboard,
@@ -40,9 +41,10 @@ export function AppSidebar() {
       <div className="p-4 border-b border-stageBorder">
         <Link
           href="/dashboard"
-          className="text-xl font-bold tracking-tight text-textPrimary"
+          className="flex items-center gap-2 text-xl font-bold tracking-tight text-textPrimary"
         >
-          Manch
+          <LogoIcon size="md" aria-label="" />
+          <span>Manch</span>
         </Link>
       </div>
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">

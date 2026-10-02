@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/auth-store';
+import { LogoFull } from '@/components/ui/logo';
 
 export function LoginForm() {
   const [email, setEmail] = useState('');
@@ -38,7 +39,10 @@ export function LoginForm() {
 
   return (
     <Card className="w-full max-w-md bg-surface border-stageBorder shadow-none">
-      <CardHeader>
+      <CardHeader className="text-center">
+        <div className="flex justify-center mb-4">
+          <LogoFull size="xl" aria-label="Manch" />
+        </div>
         <CardTitle className="text-2xl">Welcome back</CardTitle>
         <CardDescription>Sign in to your Manch account</CardDescription>
       </CardHeader>
@@ -73,7 +77,7 @@ export function LoginForm() {
           )}
           <Button
             type="submit"
-            className="w-full bg-stageAccent hover:bg-stageAccent/90 text-white"
+            className="w-full bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold"
             disabled={loading}
           >
             {loading ? 'Signing in...' : 'Sign in'}

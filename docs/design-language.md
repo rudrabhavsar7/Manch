@@ -23,13 +23,14 @@
 
 | Token | Hex | CSS Variable | Role |
 |---|---|---|---|
-| Background | `#0C0C0E` | `--bg-stage` | Primary background |
+| Background | `#0C0C0E` | `--bg-stage` | Primary background (exact logo background) |
 | Surface | `#161619` | `--bg-surface` | Cards, sidebar, elevated surfaces |
 | Elevated | `#1E1E22` | `--bg-elevated` | Inputs, interactive areas |
-| Text Primary | `#E8E6E3` | `--text-primary` | Lyrics, headings, primary text |
+| Text Primary | `#F2F0EA` | `--text-primary` | Lyrics, headings, primary text (exact logo text) |
 | Text Secondary | `#8A8A8F` | `--text-secondary` | Metadata, labels, muted text |
 | Chords | `#E2B55A` | `--color-chord` | Chord notation above lyrics |
-| Accent | `#4A9EE5` | `--color-accent` | Interactive elements, links, active states |
+| Accent | `#E2B55A` | `--color-accent` | Interactive elements, buttons, links, active states (exact logo dot) |
+| Accent Foreground | `#0C0C0E` | `--color-accent-foreground` | High-contrast text on accent buttons (10.5:1 ratio) |
 | Active Song | `#2D6A4F` | `--color-active` | Active song highlight in setlist |
 | Destructive | `#D64545` | `--color-destructive` | End gig, delete actions |
 | Border | `#1E1E22` | `--color-border` | Subtle borders on cards |
@@ -41,10 +42,11 @@
 | Background | `#F5F3EF` | `--bg-stage` | Warm paper tone |
 | Surface | `#EDEAE4` | `--bg-surface` | Cards, sidebar |
 | Elevated | `#E2DFD9` | `--bg-elevated` | Inputs |
-| Text Primary | `#1A1A1E` | `--text-primary` | Dark text on light bg |
+| Text Primary | `#0C0C0E` | `--text-primary` | Dark text on light bg (exact logo black) |
 | Text Secondary | `#6B6B70` | `--text-secondary` | Muted text |
 | Chords | `#B8862D` | `--color-chord` | Darker amber for light bg contrast |
-| Accent | `#3A7EBB` | `--color-accent` | Deeper blue for light bg |
+| Accent | `#B8862D` | `--color-accent` | Deep warm gold for light bg |
+| Accent Foreground | `#FFFFFF` | `--color-accent-foreground` | High-contrast text on light-mode accent |
 | Active Song | `#C5E5D5` | `--color-active` | Soft green highlight |
 | Destructive | `#D64545` | `--color-destructive` | Same red |
 | Border | `#D5D2CC` | `--color-border` | Subtle borders |

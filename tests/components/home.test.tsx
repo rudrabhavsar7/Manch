@@ -8,12 +8,11 @@ describe('Home page component', () => {
     useAuthStore.setState({ user: null });
   });
 
-  it('renders heading and subtitle correctly', () => {
+  it('renders logo and subtitle correctly', () => {
     render(<Home />);
 
-    const heading = screen.getByRole('heading', { level: 1, name: /manch/i });
-    expect(heading).toBeInTheDocument();
-    expect(heading).toHaveTextContent('Manch');
+    const logo = screen.getByRole('img', { name: /manch/i });
+    expect(logo).toBeInTheDocument();
 
     const subtitle = screen.getByText(/live gig companion for musicians/i);
     expect(subtitle).toBeInTheDocument();

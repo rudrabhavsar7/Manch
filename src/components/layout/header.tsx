@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/sheet';
 import { useAuthStore } from '@/stores/auth-store';
 import { ThemeToggle } from './theme-toggle';
+import { LogoIcon } from '@/components/ui/logo';
 import { cn } from '@/lib/utils/cn';
 
 const navItems = [
@@ -68,9 +69,10 @@ export function Header() {
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileOpen(false)}
-                  className="text-xl font-bold tracking-tight text-textPrimary"
+                  className="flex items-center gap-2"
                 >
-                  Manch
+                  <LogoIcon size="md" aria-label="Manch" />
+                  <span className="text-xl font-bold tracking-tight text-textPrimary">Manch</span>
                 </Link>
               </SheetTitle>
             </SheetHeader>
@@ -89,7 +91,7 @@ export function Header() {
                     className={cn(
                       'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
                       active
-                        ? 'bg-stageAccent text-white font-medium'
+                        ? 'bg-stageAccent text-stageAccentForeground font-semibold'
                         : 'text-textSecondary hover:text-textPrimary hover:bg-elevated'
                     )}
                   >
@@ -121,9 +123,10 @@ export function Header() {
         {/* Brand Link on Mobile */}
         <Link
           href="/dashboard"
-          className="text-lg font-bold tracking-tight text-textPrimary md:hidden"
+          className="flex items-center gap-2 text-lg font-bold tracking-tight text-textPrimary md:hidden"
         >
-          Manch
+          <LogoIcon size="md" aria-label="Manch" />
+          <span>Manch</span>
         </Link>
       </div>
 

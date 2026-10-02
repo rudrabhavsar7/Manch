@@ -38,7 +38,7 @@ export default async function SongsPage(props: SongsPageProps) {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-textPrimary">Song Library</h1>
           <p className="text-sm text-textSecondary mt-1">Manage your repertoire and chord charts</p>
         </div>
-        <Button asChild className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium">
+        <Button asChild className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold">
           <Link href="/songs/new">
             <Plus className="mr-2 h-4 w-4" /> New Song
           </Link>

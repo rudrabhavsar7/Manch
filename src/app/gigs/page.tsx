@@ -59,7 +59,7 @@ export default async function GigsPage() {
           </Button>
           <Button
             asChild
-            className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
+            className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold"
           >
             <Link href="/gigs/new">
               <Plus className="mr-2 h-4 w-4" /> New Gig
@@ -89,7 +89,7 @@ export default async function GigsPage() {
             </Button>
             <Button
               asChild
-              className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
+              className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold"
             >
               <Link href="/gigs/new">
                 <Plus className="mr-2 h-4 w-4" /> New Gig

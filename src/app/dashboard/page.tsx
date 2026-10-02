@@ -105,7 +105,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Button asChild className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium">
+        <Button asChild className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold">
           <Link href="/gigs/new">
             <Plus className="mr-2 h-4 w-4" /> New Gig
           </Link>
@@ -137,7 +137,7 @@ export default async function DashboardPage() {
                       <p className="text-xs text-textSecondary font-mono">PIN: {gigData.pin}</p>
                     )}
                   </div>
-                  <Button asChild size="sm" className="bg-stageAccent hover:bg-stageAccent/90 text-white">
+                  <Button asChild size="sm" className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold">
                     <Link href={`/gigs/${g.gig_id}`}>Enter Gig</Link>
                   </Button>
                 </Card>

@@ -407,7 +407,7 @@ export function SetlistEditor({
               <Button
                 onClick={handleSave}
                 disabled={saving || deleting}
-                className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
+                className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold"
               >
                 {saving ? 'Saving...' : 'Save Setlist'}
               </Button>

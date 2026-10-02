@@ -45,7 +45,7 @@ export default async function SetlistsPage() {
         </div>
         <Button
           asChild
-          className="bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
+          className="bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold"
         >
           <Link href="/setlists/new">
             <Plus className="mr-2 h-4 w-4" /> New Setlist

@@ -135,7 +135,7 @@ export default function ProfilePage() {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="w-full sm:w-auto bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
+            className="w-full sm:w-auto bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold"
           >
             {saving ? 'Saving...' : saved ? 'Saved ✓' : 'Save Profile'}
           </Button>

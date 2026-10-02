@@ -204,7 +204,7 @@ export function JoinGigForm() {
               <Button
                 type="submit"
                 disabled={loading || pin.length < 4}
-                className="w-full bg-stageAccent hover:bg-stageAccent/90 text-white font-medium"
+                className="w-full bg-stageAccent hover:bg-stageAccent/90 text-stageAccentForeground font-semibold"
               >
                 {loading ? 'Joining...' : 'Join Gig'}
               </Button>

@@ -62,6 +62,7 @@ const config: Config = {
         textSecondary: "var(--text-secondary)",
         chord: "var(--color-chord)",
         stageAccent: "var(--color-accent)",
+        stageAccentForeground: "var(--color-accent-foreground)",
         active: "var(--color-active)",
         stageDestructive: "var(--color-destructive)",
         stageBorder: "var(--color-border)",
