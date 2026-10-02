@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { AdminControls } from '@/components/live/admin-controls';
 import { useGigStore } from '@/stores/gig-store';
+import { useUIStore } from '@/stores/ui-store';
 import { useSync } from '@/hooks/use-sync';
 
 vi.mock('@/hooks/use-sync', () => ({
@@ -26,7 +27,10 @@ describe('AdminControls', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    act(() => { useGigStore.setState({ activeSongId: 'song-2' }); }); // Middle song
+    act(() => {
+      useGigStore.setState({ activeSongId: 'song-2' }); // Middle song
+      useUIStore.setState({ isViewingPhoto: false, fontSize: 16 });
+    });
   });
 
   it('renders counter correctly', () => {
@@ -113,5 +117,19 @@ describe('AdminControls', () => {
     const next = screen.getByTestId('admin-next');
     expect(next).toHaveClass('sm:w-24');
     expect(next).not.toHaveClass('w-24');
+  });
+
+  it('renders center controls in lyrics mode', () => {
+    render(<AdminControls songIds={songIds} onSend={mockSend} />);
+    expect(screen.getByTestId('font-size-slider')).toBeInTheDocument();
+  });
+
+  it('renders photo zoom controls in center when viewing photo', () => {
+    act(() => {
+      useUIStore.setState({ isViewingPhoto: true, photoCount: 1 });
+    });
+    render(<AdminControls songIds={songIds} onSend={mockSend} />);
+    expect(screen.queryByTestId('font-size-slider')).not.toBeInTheDocument();
+    expect(screen.getByTestId('photo-zoom-in')).toBeInTheDocument();
   });
 });

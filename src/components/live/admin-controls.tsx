@@ -6,6 +6,7 @@ import { useCallback } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { SyncMessage } from '@/lib/sync/message-types';
+import { FooterCenterControls } from './footer-center-controls';
 
 interface AdminControlsProps {
   songIds: string[];
@@ -69,7 +70,7 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
 
   return (
     <div className="flex items-center justify-between w-full p-2 min-h-[56px] flex-wrap gap-y-1 bg-surface border-t border-border" suppressHydrationWarning>
-      <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4">
+      <div className="flex items-center flex-wrap gap-x-2 sm:gap-x-4 shrink-0">
         <Button 
           variant="outline" 
           onClick={handlePrev} 
@@ -96,6 +97,8 @@ export function AdminControls({ songIds, onSend }: AdminControlsProps) {
           <ChevronRight className="w-4 h-4 sm:ml-2" />
         </Button>
       </div>
+
+      <FooterCenterControls className="flex-1 min-w-0" />
       
       <Button 
         variant="destructive" 
