@@ -91,21 +91,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-      <html lang="en" className="dark" suppressHydrationWarning>
-        <body
-          className={cn(
-            inter.className,
-            inter.variable,
-            jetbrainsMono.variable,
-            notoSansGujarati.variable,
-            notoSansDevanagari.variable,
-            'min-h-dvh bg-background text-foreground antialiased'
-          )}
-        >
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body
+        className={cn(
+          inter.className,
+          inter.variable,
+          jetbrainsMono.variable,
+          notoSansGujarati.variable,
+          notoSansDevanagari.variable,
+          'min-h-dvh bg-background text-foreground antialiased'
+        )}
+      >
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
           <AppShell>{children}</AppShell>
-        </body>
-      </html>
-    </ThemeProvider>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }
+
