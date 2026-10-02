@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, Users } from 'lucide-react';
+import Link from 'next/link';
+import { Menu, Users, ArrowLeft } from 'lucide-react';
 import { Tables } from '@/types/database';
 import { useGigStore, type QueueItem } from '@/stores/gig-store';
 import { useSync } from '@/hooks/use-sync';
@@ -191,7 +192,20 @@ export function LiveView({ gig, songs, songIds, queue, myRole, userId }: LiveVie
     <div className="flex flex-col h-[100dvh] w-full bg-stage text-foreground overflow-hidden">
       {/* Top Header */}
       <header className="h-[48px] short:h-9 flex items-center justify-between px-4 short:px-2.5 bg-surface border-b border-border shrink-0">
-        <div className="flex items-center space-x-4 short:space-x-2">
+        <div className="flex items-center space-x-2 sm:space-x-4 short:space-x-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            asChild
+            className="h-8 w-8 short:h-7 short:w-7 text-textSecondary hover:text-textPrimary hover:bg-elevated shrink-0"
+            aria-label="Back to dashboard"
+            data-testid="live-back-button"
+          >
+            <Link href="/dashboard">
+              <ArrowLeft className="h-5 w-5 short:h-4 short:w-4" />
+            </Link>
+          </Button>
+
           <Sheet open={setlistOpen} onOpenChange={setSetlistOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden short:!inline-flex short:h-7 short:w-7" aria-label="Open setlist">

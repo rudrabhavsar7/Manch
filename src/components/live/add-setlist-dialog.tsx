@@ -1,4 +1,4 @@
-import { Loader2, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ManchLoader } from '@/components/ui/manch-loader';
 import type { Tables } from '@/types/database';
 
 type Setlist = Tables<'setlists'>;
@@ -36,9 +37,8 @@ export function AddSetlistDialog({
         </DialogHeader>
 
         {loading && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading setlists...
+          <div className="flex items-center justify-center py-6">
+            <ManchLoader size="sm" text="Loading setlists..." />
           </div>
         )}
 

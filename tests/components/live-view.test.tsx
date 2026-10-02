@@ -215,5 +215,21 @@ describe('LiveView', () => {
     const badge = screen.getByText('PIN: 1234');
     expect(badge).not.toHaveClass('hidden');
   });
+
+  it('renders back to dashboard button linking to /dashboard', () => {
+    render(
+      <LiveView
+        gig={mockGig}
+        songs={mockSongs}
+        songIds={[]} queue={[]}
+        myRole="admin"
+        userId="user-1"
+      />
+    );
+
+    const backBtn = screen.getByTestId('live-back-button');
+    expect(backBtn).toBeInTheDocument();
+    expect(backBtn).toHaveAttribute('href', '/dashboard');
+  });
 });
 
